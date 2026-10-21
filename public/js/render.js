@@ -10,8 +10,8 @@ const Renderer = (() => {
   ];
   const BRAND_A = '#4361ee', BRAND_B = '#7c4dff';   // the nocod.dev gradient
   // seat height (m above the floor) of each tier of the stands, front row first
-  const TIERS = [1.05, 1.75, 2.45, 3.15];
-  const TIER_SCALE = [1.02, 0.97, 0.92, 0.88];
+  const TIERS = [2.35, 2.85, 3.35, 3.85, 4.35];
+  const TIER_SCALE = [0.56, 0.5, 0.45, 0.41, 0.37];   // fans higher up are further away, so smaller
   const SKIN = ['#f2c7a0', '#e0ac7e', '#c68642', '#8d5524', '#f6d5b9', '#a56b3d'];
   const HAIR = ['#1f1a24', '#3b2a20', '#6b4423', '#c9a24b', '#8a8a8a', '#2b1d46', '#7a2f2f'];
   const SHIRTS = ['#7c4dff', '#4361ee', '#ec4899', '#f8fafc', '#14b8a6', '#facc15', '#f97316', '#a78bfa', '#38bdf8', '#fb7185', '#34d399'];
@@ -48,11 +48,6 @@ const Renderer = (() => {
 
   function create(canvas) {
     const mainCtx = canvas.getContext('2d', { alpha: false });
-    // a real photo of a seated crowd is the stands; only the front row of fans is animated on top of it
-    const crowdImg = new Image();
-    let hasPhoto = false;
-    crowdImg.onload = () => { hasPhoto = true; buildBackground(); crowdLast = -1e9; };
-    crowdImg.src = '/crowd.jpg';
     let ctx = mainCtx;
     // the crowd is drawn into its own small layer a few times a second and then blitted: the stands change slowly
     const crowdLayer = document.createElement('canvas');
@@ -82,7 +77,7 @@ const Renderer = (() => {
       S = Math.min(W / W_WIDTH, H / WORLD_H);
       OX = (W - W_WIDTH * S) / 2 - W_LEFT * S;
       FY = Math.round(H * 0.8);
-      crowdTop = Math.max(0, Math.floor(FY - (TIERS[TIERS.length - 1] + 1.9) * S));
+      crowdTop = Math.max(0, Math.floor(FY - (TIERS[TIERS.length - 1] + 2.1) * S));
       crowdH = Math.ceil(FY - 0.85 * S) - crowdTop;
       crowdLayer.width = Math.round(W * dpr); crowdLayer.height = Math.max(1, Math.round(crowdH * dpr));
       crowdCtx = crowdLayer.getContext('2d');
@@ -113,25 +108,6 @@ const Renderer = (() => {
         g.fillStyle = `rgba(${c},${0.05 + Math.random() * 0.08})`;
         g.beginPath(); g.arc(x, y, r, 0, 6.3); g.fill();
       }
-      // the photo of the crowd: the seated spectators along the bottom of the picture, tinted purple and faded into the wall
-      if (hasPhoto) {
-        const bandTop = FY - 4.4 * S, bandH = 3.5 * S;
-        const tw = Math.max(1, Math.round(W * dpr)), th = Math.max(1, Math.round(bandH * dpr));
-        const tmp = document.createElement('canvas'); tmp.width = tw; tmp.height = th;
-        const tg = tmp.getContext('2d');
-        tg.drawImage(crowdImg, 0, 690, crowdImg.naturalWidth, crowdImg.naturalHeight - 690, 0, 0, tw, th);
-        tg.globalCompositeOperation = 'multiply'; tg.fillStyle = '#7a52e8'; tg.fillRect(0, 0, tw, th);   // into the purple theme
-        tg.globalCompositeOperation = 'source-over';
-        const dark = tg.createLinearGradient(0, 0, 0, th);
-        dark.addColorStop(0, 'rgba(14,8,44,0.30)'); dark.addColorStop(1, 'rgba(14,8,44,0.5)');
-        tg.fillStyle = dark; tg.fillRect(0, 0, tw, th);
-        // fade the top edge into the wall behind, so there is no visible line
-        tg.globalCompositeOperation = 'destination-in';
-        const mask = tg.createLinearGradient(0, 0, 0, th);
-        mask.addColorStop(0, 'rgba(0,0,0,0)'); mask.addColorStop(0.35, 'rgba(0,0,0,1)'); mask.addColorStop(1, 'rgba(0,0,0,1)');
-        tg.fillStyle = mask; tg.fillRect(0, 0, tw, th);
-        g.drawImage(tmp, 0, bandTop, W, bandH);
-      }
       // ceiling lights and their beams
       for (let i = 0; i < 5; i++) {
         const lx = sx(i * 3.35 - 0.1);
@@ -159,63 +135,66 @@ const Renderer = (() => {
       g.beginPath(); g.moveTo(sx(0), FY + 1); g.lineTo(sx(COURT_W), FY + 1); g.stroke();
       g.beginPath(); g.moveTo(sx(0) + (sx(0) - W / 2) * 0.12, yb); g.lineTo(sx(COURT_W) + (sx(COURT_W) - W / 2) * 0.12, yb); g.stroke();
 
-      // the fans: laid out once, animated live in drawCrowd
+      // the fans: laid out once, animated live in drawCrowd. Nothing here is regular: every fan has their own size,
+      // seat height and spacing, some seats are empty and some friends sit in clusters.
       crowd = [];
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
       for (let row = TIERS.length - 1; row >= 0; row--) {
-        const step = 0.5 * TIER_SCALE[row] * 1.04;
-        for (let x = -1.7 + (row % 2) * step / 2; x < 15.1; x += step * (0.9 + Math.random() * 0.2)) {
-          const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-          const r = Math.random();
-          crowd.push({
-            x, row, ph: Math.random() * 6.28, sp: 0.8 + Math.random() * 0.6,
-            shirt: pick(SHIRTS), skin: pick(SKIN), hair: pick(HAIR),
-            turn: 0, look: Math.random() * 2 - 1,
-            // the face and head are all picked independently, so no two neighbours look alike
-            hairStyle: pick(['short', 'short', 'long', 'bald', 'spiky', 'afro', 'bun', 'bob', 'mohawk', 'curly']),
-            hw: 0.9 + Math.random() * 0.22, hh: 0.94 + Math.random() * 0.2,
-            eyeStyle: pick(['round', 'round', 'big', 'sleepy', 'narrow', 'dot', 'wide']),
-            eyeGap: 0.75 + Math.random() * 0.5, eyeH: Math.random() * 0.05 - 0.01,
-            brow: pick(['arch', 'flat', 'slant', 'thick', 'none']), browW: 0.022 + Math.random() * 0.03,
-            nose: pick(['none', 'curve', 'curve', 'big', 'dot']),
-            mouth: pick(['smile', 'smile', 'grin', 'smirk', 'flat', 'open', 'tongue', 'frown']),
-            beard: r < 0.12 ? 'mustache' : r < 0.2 ? 'beard' : r < 0.26 ? 'goatee' : r < 0.3 ? 'stubble' : '',
-            specs: pick(['', '', '', '', 'round', 'square', 'sun']),
-            hat: pick(['', '', '', '', 'cap', 'beanie', 'band', 'party', 'bow']),
-            blush: Math.random() < 0.2, freckles: Math.random() < 0.15, cheer: pick(['open', 'open', 'grin', 'shout', 'happy']),
-            hand: r < 0.07 ? 'flagA' : r < 0.14 ? 'flagB' : r < 0.26 ? 'phone' : r < 0.31 ? 'foam' : '',
-          });
+        let x = -1.9 + Math.random() * 0.8;
+        while (x < 15.4) {
+          const size = TIER_SCALE[row] * (0.74 + Math.random() * 0.56);
+          if (Math.random() < 0.82) {
+            const r = Math.random();
+            crowd.push({
+              x, row, size, drop: (Math.random() - 0.5) * 0.3, dim: Math.random() * 0.2,
+              ph: Math.random() * 6.28, sp: 0.8 + Math.random() * 0.6,
+              shirt: pick(SHIRTS), skin: pick(SKIN), hair: pick(HAIR),
+              turn: 0, look: Math.random() * 2 - 1,
+              // the face and head are all picked independently, so no two neighbours look alike
+              hairStyle: pick(['short', 'short', 'long', 'bald', 'spiky', 'afro', 'bun', 'bob', 'mohawk', 'curly']),
+              hw: 0.9 + Math.random() * 0.22, hh: 0.94 + Math.random() * 0.2,
+              eyeStyle: pick(['round', 'round', 'big', 'sleepy', 'narrow', 'dot', 'wide']),
+              eyeGap: 0.75 + Math.random() * 0.5, eyeH: Math.random() * 0.05 - 0.01,
+              brow: pick(['arch', 'flat', 'slant', 'thick', 'none']), browW: 0.022 + Math.random() * 0.03,
+              nose: pick(['none', 'curve', 'curve', 'big', 'dot']),
+              mouth: pick(['smile', 'smile', 'grin', 'smirk', 'flat', 'open', 'tongue', 'frown']),
+              beard: r < 0.12 ? 'mustache' : r < 0.2 ? 'beard' : r < 0.26 ? 'goatee' : r < 0.3 ? 'stubble' : '',
+              specs: pick(['', '', '', '', 'round', 'square', 'sun']),
+              hat: pick(['', '', '', '', 'cap', 'beanie', 'band', 'party', 'bow']),
+              blush: Math.random() < 0.2, freckles: Math.random() < 0.15, cheer: pick(['open', 'open', 'grin', 'shout', 'happy']),
+              hand: r < 0.07 ? 'flagA' : r < 0.14 ? 'flagB' : r < 0.26 ? 'phone' : r < 0.31 ? 'foam' : '',
+            });
+          }
+          // uneven spacing: tight pairs, normal gaps, now and then a wide empty stretch
+          x += size * 0.5 * (0.7 + Math.random() * 1.8) + (Math.random() < 0.08 ? 0.8 + Math.random() * 1.6 : 0);
         }
       }
     }
 
-    // The stands: four tiers, back row first so the front rows hide the legs of the ones behind. Fans sit and sway,
-    // and jump up cheering (arms, flags and phone lights) when `crowdJump` is raised by a point or a smash.
+    // The stands: five terraces seen from a distance, far ones first. Fans sit and sway, and jump up cheering (arms,
+    // flags and phone lights) when `crowdJump` is raised by a point or a smash. Kept dim so the court stays the focus.
     function drawCrowd() {
       const excite = Math.max(0, Math.min(1, crowdJump / 1.1));
+      const last = TIERS.length - 1;
+      // the dark back of the stands, fading in towards the top so there is no hard edge
+      const wallTop = FY - (TIERS[last] + 1.7) * S, wallBottom = FY - 0.9 * S;
+      const wall = ctx.createLinearGradient(0, wallTop, 0, wallBottom);
+      wall.addColorStop(0, 'rgba(10,5,34,0)'); wall.addColorStop(0.35, 'rgba(10,5,34,0.5)'); wall.addColorStop(1, 'rgba(10,5,34,0.62)');
+      ctx.fillStyle = wall; ctx.fillRect(0, wallTop, W, wallBottom - wallTop);
       let idx = 0;
-      for (let row = TIERS.length - 1; row >= 0; row--) {
-        if (hasPhoto && row > 0) { while (idx < crowd.length && crowd[idx].row === row) idx++; continue; }
+      for (let row = last; row >= 0; row--) {
         const topY = FY - TIERS[row] * S;
-        const depth = row / (TIERS.length - 1);
-        // the step the row sits on
-        const stepH = (row === 0 ? TIERS[0] - 0.92 : 0.7) * S;
-        ctx.fillStyle = mix('#3b2a8f', '#0c0725', 0.25 + depth * 0.45);
-        ctx.fillRect(0, topY, W, stepH + 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.10)';
-        ctx.fillRect(0, topY, W, Math.max(1, 0.03 * S));
-        const sc = TIER_SCALE[row] * S;
-        const shade = hasPhoto ? 0.55 : 0.42 + depth * 0.3;     // in front of the photo the fans are dim silhouettes
+        // the terrace step the row sits on
+        ctx.fillStyle = 'rgba(20,10,64,0.4)';
+        ctx.fillRect(0, topY, W, 0.6 * S);
+        ctx.fillStyle = 'rgba(255,255,255,0.045)';
+        ctx.fillRect(0, topY, W, Math.max(1, 0.025 * S));
         while (idx < crowd.length && crowd[idx].row === row) {
-          drawFan(crowd[idx], topY, sc, shade, excite);
-          idx++;
+          const c = crowd[idx++];
+          const shade = Math.min(0.92, 0.6 + row * 0.05 + c.dim);
+          drawFan(c, topY - c.drop * S, c.size * S, shade, excite);
         }
       }
-      if (hasPhoto) return;
-      // push the stands back a little so the shuttle and the players stand out against them
-      const top = FY - (TIERS[TIERS.length - 1] + 1.4) * S, bottom = FY - 0.9 * S;
-      const veil = ctx.createLinearGradient(0, top, 0, bottom);
-      veil.addColorStop(0, 'rgba(10,5,34,0)'); veil.addColorStop(0.3, 'rgba(10,5,34,0.62)'); veil.addColorStop(1, 'rgba(10,5,34,0.45)');
-      ctx.fillStyle = veil; ctx.fillRect(0, top, W, bottom - top);
     }
 
     const INK = '#190d45';   // comic-book outline colour
@@ -243,7 +222,7 @@ const Renderer = (() => {
     }
 
     function drawFan(c, seatY, sc, shade, excite) {
-      if (lod >= 2 || (lod === 1 && c.row >= 2)) { drawFanLite(c, seatY, sc, shade, excite); return; }
+      if (lod >= 2 || (lod === 1 && c.row >= 3) || c.size < 0.5) { drawFanLite(c, seatY, sc, shade, excite); return; }
       // heads follow the shuttle: each fan turns a little behind the others, so a rally ripples across the stands
       const want = Math.max(-1, Math.min(1, (gazeX - c.x) / 4.5)) * 0.95 + Math.sin(time * 0.5 * c.sp + c.ph) * 0.12 * c.look;
       c.turn += (want - c.turn) * Math.min(1, frameDt * (2.5 + c.sp * 3.5));
