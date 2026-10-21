@@ -41,6 +41,18 @@
       --orange: #f97316;
     }
     * { box-sizing: border-box; }
+    /* Nothing on the page is text to select: no highlight on click or double click, no caret, no tap flash.
+       Only the name box and the share link keep a caret, because you type or copy there. */
+    html, body, canvas, div, p, span, h1, h2, label, kbd, button { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; caret-color: transparent; }
+    * { -webkit-tap-highlight-color: transparent; }
+    input { -webkit-user-select: text; user-select: text; caret-color: auto; }
+    ::selection { background: transparent; }
+    input::selection { background: rgba(74, 222, 128, 0.35); }
+    canvas, button:focus, select:focus { outline: none; }
+    button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    #stage { cursor: default; }
+    button, select { cursor: pointer; }
+    img { -webkit-user-drag: none; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
     #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
     [hidden] { display: none !important; }

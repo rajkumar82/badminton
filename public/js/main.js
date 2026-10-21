@@ -340,6 +340,23 @@
   show('pMenu');
   requestAnimationFrame(frame);
 
+  // No stray selection, caret or focus ring from clicking around, and a clicked button must not keep the keyboard
+  // (otherwise pressing Space to hit the shuttle would press that button again).
+  document.addEventListener('mousedown', (e) => {
+    if (e.target.closest('input, select')) return;
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+    e.preventDefault();
+  });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (b) b.blur();
+    const sel = window.getSelection && window.getSelection();
+    if (sel && !e.target.closest('input')) sel.removeAllRanges();
+  });
+  document.addEventListener('dblclick', (e) => { if (!e.target.closest('input')) e.preventDefault(); });
+  document.addEventListener('selectstart', (e) => { if (!e.target.closest || !e.target.closest('input')) e.preventDefault(); });
+  document.addEventListener('contextmenu', (e) => { if (e.target === canvas) e.preventDefault(); });
+
   // handy for tests and poking around in the console
   window.__bm = { get game() { return game; }, get view() { return view; }, get mode() { return mode; }, keys };
 })();
