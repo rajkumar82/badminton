@@ -4,7 +4,6 @@
   const canvas = $('stage');
   const renderer = Renderer.create(canvas);
   const DT = Sim.DT;
-  const LEVEL_NAMES = ['Easy', 'Medium', 'Hard'];
 
   let mode = 'menu';           // menu | local | online
   let seat = -1;               // 0 or 1 when playing, -1 when spectating
@@ -90,7 +89,7 @@
     Sound.unlock(); Sound.blip();
     const level = Number($('level').value);
     mode = 'local'; seat = 0; role = 'player';
-    names = [n, `Computer (${LEVEL_NAMES[level]})`];
+    names = [n, 'Computer'];
     game = new Sim.Game();
     bot = new AI.Bot(1, level);
     acc = 0; renderer.reset(); lastPhase = ''; lastScore = '0-0';
