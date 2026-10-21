@@ -102,6 +102,9 @@
     button:hover { filter: brightness(1.08); }
     button:disabled { opacity: 0.5; cursor: default; }
     button.secondary { background: var(--card2); color: var(--text); border: 1px solid rgba(255, 255, 255, 0.14); }
+    #nameRow { font-size: 15px; color: var(--muted); margin-top: 4px; }
+    #nameRow b { color: var(--text); font-size: 17px; }
+    button.link { background: none; border: 0; color: var(--accent); font-size: 14px; font-weight: 600; padding: 0 4px; text-decoration: underline; }
     .stack { display: grid; gap: 10px; margin-top: 14px; }
     .row { display: flex; gap: 8px; }
     .row select { flex: 0 0 120px; }
@@ -138,9 +141,12 @@
     <div class="card" id="pMenu">
       <h1>🏸 Badminton</h1>
       <p>Rally with real shuttlecock physics. First to 15 wins, and at 14-14 you must win by two.</p>
-      <label for="name">Your name</label>
-      <input id="name" maxlength="14" autocomplete="nickname" placeholder="Enter your name" autofocus>
-      <div class="err" id="nameErr" hidden>Please enter a name first.</div>
+      <div id="nameRow" hidden>Playing as <b id="nameShown"></b> <button class="link" id="btnChange" type="button">change</button></div>
+      <div id="nameBox">
+        <label for="name">Your name</label>
+        <input id="name" maxlength="14" autocomplete="nickname" placeholder="Enter your name" autofocus>
+        <div class="err" id="nameErr" hidden>Please enter a name first.</div>
+      </div>
       <p class="note" id="joinNote" hidden>You were invited to game <b id="joinCode"></b>. If a seat is free you play, otherwise you can watch.</p>
       <div class="stack">
         <button id="btnJoin" hidden>Join the game</button>

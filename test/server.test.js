@@ -64,8 +64,8 @@ test('two players and a spectator in one game, two games in parallel', async () 
     assert.strictEqual(rooms.size, 2);
     assert.notStrictEqual(jd.room.code, code);
 
-    // a player leaving ends their game only
-    a.close();
+    // a player leaving on purpose ends their game only
+    a.sendJson({ t: 'leave' });
     const ended = await b.next('ended');
     assert.strictEqual(ended.why, 'left');
     await c.next('ended');
@@ -82,5 +82,65 @@ test('unknown game code gives an error', async () => {
     const err = await a.next('error');
     assert.strictEqual(err.code, 'nogame');
     a.close();
+  } finally { srv.close(); }
+});
+
+test('a dropped player gets their seat back within the grace period', async () => {
+  process.env.RECONNECT_GRACE_MS = '3000';
+  const srv = await startServer(0);
+  try {
+    const a = await client(srv.port), b = await client(srv.port);
+    a.sendJson({ t: 'create', name: 'Asha' });
+    const ja = await a.next('joined');
+    b.sendJson({ t: 'join', code: ja.room.code, name: 'Bo' });
+    await b.next('joined');
+    await b.next('snap');
+
+    a.terminate();                                   // connection drops, no goodbye
+    const paused = await b.next('paused');
+    assert.strictEqual(paused.who, 'Asha');
+    assert.strictEqual(rooms.size, 1, 'the game is held, not ended');
+
+    const a2 = await client(srv.port);
+    a2.sendJson({ t: 'rejoin', code: ja.room.code, token: ja.token });
+    const back = await a2.next('joined');
+    assert.strictEqual(back.seat, 0);
+    assert.strictEqual(back.resumed, true);
+    await b.next('resumed');
+    await a2.next('snap');                            // play carries on
+    [a2, b].forEach((w) => w.close());
+  } finally { delete process.env.RECONNECT_GRACE_MS; srv.close(); }
+});
+
+test('the game ends when the dropped player does not come back in time', async () => {
+  process.env.RECONNECT_GRACE_MS = '300';
+  const srv = await startServer(0);
+  try {
+    const a = await client(srv.port), b = await client(srv.port);
+    a.sendJson({ t: 'create', name: 'Asha' });
+    const ja = await a.next('joined');
+    b.sendJson({ t: 'join', code: ja.room.code, name: 'Bo' });
+    await b.next('joined');
+    a.terminate();
+    await b.next('paused');
+    const ended = await b.next('ended');
+    assert.strictEqual(ended.why, 'left');
+    assert.strictEqual(rooms.size, 0);
+    const late = await client(srv.port);
+    late.sendJson({ t: 'rejoin', code: ja.room.code, token: ja.token });
+    assert.strictEqual((await late.next('error')).code, 'norejoin');
+    [late, b].forEach((w) => w.close());
+  } finally { delete process.env.RECONNECT_GRACE_MS; srv.close(); }
+});
+
+test('a wrong token cannot take over a seat', async () => {
+  const srv = await startServer(0);
+  try {
+    const a = await client(srv.port), x = await client(srv.port);
+    a.sendJson({ t: 'create' });
+    const ja = await a.next('joined');
+    x.sendJson({ t: 'rejoin', code: ja.room.code, token: 'nope' });
+    assert.strictEqual((await x.next('error')).code, 'norejoin');
+    [a, x].forEach((w) => w.close());
   } finally { srv.close(); }
 });

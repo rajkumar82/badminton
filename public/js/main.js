@@ -16,6 +16,11 @@
   let view = null;             // snapshot being drawn
   let lastPhase = '', lastScore = '0-0';
   let rematchSent = false;
+  let session = null;          // { code, token } for the game we are in; kept so a refresh can take the seat back
+  let retry = null;            // while (re)connecting: { msg, until, timer }
+  let netNote = '';            // shown while the connection is being restored
+  let pausedUntil = 0, pausedWho = '';
+  const RETRY_MS = 60000;      // how long we keep trying to reach the server, and how long the server holds a seat
   const keys = { left: false, right: false, jump: false, smash: false, drop: false, normal: false, hit: false };
 
   const inviteCode = (new URLSearchParams(location.search).get('g') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
@@ -52,17 +57,31 @@
   }
 
   // ---------- name ----------
-  function getName() {
-    const n = $('name').value.replace(/[^\p{L}\p{N} _.-]/gu, '').trim().slice(0, 14);
-    if (!n) {
-      $('name').focus();
-      $('nameErr').hidden = false;
-      return null;
-    }
-    $('nameErr').hidden = true;
+  // Remembered in this browser (localStorage, with a cookie as backup), so it is only ever typed once.
+  function cleanName(raw) { return String(raw || '').replace(/[^\p{L}\p{N} _.-]/gu, '').trim().slice(0, 14); }
+  function savedName() {
+    try { const v = cleanName(localStorage.getItem('bm-name')); if (v) return v; } catch (e) { /* storage blocked */ }
+    const c = document.cookie.match(/(?:^|; )bm_name=([^;]*)/);
+    try { return c ? cleanName(decodeURIComponent(c[1])) : ''; } catch (e) { return ''; }
+  }
+  function saveName(n) {
     try { localStorage.setItem('bm-name', n); } catch (e) { /* ignore */ }
-    myName = n;
-    return n;
+    document.cookie = `bm_name=${encodeURIComponent(n)}; max-age=31536000; path=/; SameSite=Lax`;
+  }
+  function showNameUI(editing) {
+    $('nameRow').hidden = editing || !myName;
+    $('nameBox').hidden = !editing && !!myName;
+    $('nameShown').textContent = myName;
+    if (editing) { $('name').value = myName; $('name').focus(); $('name').select(); }
+  }
+  function getName() {
+    if (!$('nameBox').hidden) {
+      const n = cleanName($('name').value);
+      if (!n) { $('name').focus(); $('nameErr').hidden = false; return null; }
+      $('nameErr').hidden = true;
+      myName = n; saveName(n); showNameUI(false);
+    }
+    return myName;
   }
 
   // ---------- local game against the computer ----------
@@ -80,18 +99,64 @@
   }
 
   // ---------- online ----------
-  function connect(first) {
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    ws = new WebSocket(`${proto}://${location.host}/ws`);
-    ws.onopen = () => ws.send(JSON.stringify(first));
-    ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } onServer(m); };
-    ws.onclose = () => {
-      if (mode === 'online' && ws) { ws = null; message('Connection lost', 'The connection to the game server was closed.', [{ label: 'Back to menu', onClick: goMenu }]); }
-      else if (mode === 'connecting') { ws = null; mode = 'menu'; message('Could not connect', 'The game server did not answer. Please try again.', [{ label: 'Back to menu', onClick: goMenu }]); }
+  const wsUrl = () => `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+
+  function saveSession(s) {
+    session = s;
+    try { if (s) sessionStorage.setItem('bm-session', JSON.stringify(s)); else sessionStorage.removeItem('bm-session'); } catch (e) { /* ignore */ }
+  }
+  function stopRetry() { if (retry) { clearTimeout(retry.timer); retry = null; } netNote = ''; }
+
+  // Reach the server, and keep trying for a minute: the first connection may hit a server that is still waking up,
+  // and a game that loses its connection has to be able to find its seat again.
+  function connectOnline(msg) {
+    stopRetry();
+    retry = { msg, until: Date.now() + RETRY_MS, timer: null };
+    tryConnect();
+  }
+
+  function secsLeft() { return retry ? Math.max(0, Math.ceil((retry.until - Date.now()) / 1000)) : 0; }
+
+  function showRetrying() {
+    if (mode === 'connecting') {
+      message('Connecting…', `Reaching the game server (trying for ${secsLeft()} more seconds).`, [{ label: 'Cancel', secondary: true, onClick: goMenu }]);
+    } else netNote = 'Connection lost. Reconnecting…';
+  }
+
+  function tryConnect() {
+    if (!retry) return;
+    let sock;
+    try { sock = new WebSocket(wsUrl()); } catch (e) { sock = null; }
+    ws = sock;
+    if (!sock) { scheduleRetry(); return; }
+    sock.onopen = () => { if (ws === sock && retry) sock.send(JSON.stringify(retry.msg)); };
+    sock.onmessage = (e) => { if (ws !== sock) return; let m; try { m = JSON.parse(e.data); } catch (err) { return; } onServer(m); };
+    sock.onclose = () => {
+      if (ws !== sock) return;            // closed on purpose
+      ws = null;
+      if (!retry && mode === 'online' && session) {
+        // an established game lost its connection: take the same seat back (or keep watching)
+        retry = { msg: session.token ? { t: 'rejoin', code: session.code, token: session.token } : { t: 'join', code: session.code }, until: Date.now() + RETRY_MS, timer: null };
+      }
+      scheduleRetry();
     };
   }
 
+  function scheduleRetry() {
+    if (!retry) return;
+    if (Date.now() >= retry.until) {
+      stopRetry(); saveSession(null);
+      const wasPlaying = mode === 'online';
+      mode = 'menu';
+      message(wasPlaying ? 'Connection lost' : 'Could not connect', wasPlaying ? 'We could not get back to the game server in time.' : 'The game server did not answer. Please try again.', [{ label: 'Back to menu', onClick: goMenu }]);
+      return;
+    }
+    showRetrying();
+    retry.timer = setTimeout(tryConnect, 1500);
+  }
+
   function leaveOnline() {
+    stopRetry(); saveSession(null); pausedUntil = 0;
     if (ws) { const s = ws; ws = null; try { s.send(JSON.stringify({ t: 'leave' })); s.close(); } catch (e) { /* closed */ } }
   }
 
@@ -100,7 +165,21 @@
     Sound.unlock(); Sound.blip();
     mode = 'connecting';
     show(null);
-    connect(code ? { t: 'join', code, name: n } : { t: 'create', name: n });
+    connectOnline(code ? { t: 'join', code, name: n } : { t: 'create', name: n });
+    showRetrying();
+  }
+
+  // a refresh or a returning tab picks its game up again
+  function resumeSession() {
+    let s = null;
+    try { s = JSON.parse(sessionStorage.getItem('bm-session') || 'null'); } catch (e) { s = null; }
+    if (!s || !s.code || (inviteCode && inviteCode !== s.code)) { saveSession(null); return false; }
+    session = s;
+    mode = 'connecting';
+    show(null);
+    connectOnline(s.token ? { t: 'rejoin', code: s.code, token: s.token } : { t: 'join', code: s.code });
+    showRetrying();
+    return true;
   }
 
   function link() { return `${location.origin}/?g=${room.code}`; }
@@ -108,8 +187,11 @@
   function onServer(m) {
     switch (m.t) {
       case 'joined':
+        stopRetry();
         mode = 'online'; role = m.role; seat = m.seat; room = m.room; names = room.names.slice();
-        renderer.reset(); buffer = []; view = null; rematchSent = false; lastPhase = ''; lastScore = '0-0';
+        saveSession({ code: room.code, token: m.token || null });
+        if (!m.resumed) { renderer.reset(); buffer = []; view = null; rematchSent = false; lastPhase = ''; lastScore = '0-0'; pausedUntil = 0; }
+        else buffer = [];
         $('hud').hidden = false; $('menuBtn').hidden = false; updateNames();
         if (role === 'player' && !room.started) {
           $('shareLink').value = link();
@@ -119,7 +201,7 @@
         break;
       case 'start':
         room = m.room; names = room.names.slice(); updateNames();
-        renderer.reset(); buffer = []; rematchSent = false; lastPhase = ''; lastScore = '0-0';
+        renderer.reset(); buffer = []; rematchSent = false; lastPhase = ''; lastScore = '0-0'; pausedUntil = 0;
         show(null);
         break;
       case 'room': room = m.room; break;
@@ -129,20 +211,32 @@
         handleEvents(m.s.ev, m.s);
         break;
       }
+      case 'paused':
+        pausedWho = m.who; pausedUntil = performance.now() + (m.secs || 60) * 1000;
+        break;
+      case 'resumed':
+        pausedUntil = 0;
+        break;
       case 'rematch':
         if (m.who !== seat) $('sub').textContent = `${names[m.who]} wants a rematch`;
         break;
       case 'ended': {
+        stopRetry(); saveSession(null); pausedUntil = 0;
         const s = ws; ws = null; if (s) s.close();
         const why = m.why === 'left' ? `${m.who || 'A player'} left the game.` : 'This game was closed.';
         message('Game ended', why, [{ label: 'Back to menu', onClick: goMenu }]);
         break;
       }
       case 'error': {
+        const quiet = m.code === 'norejoin' && mode === 'connecting';   // a stale session on page load: just show the menu
+        const wasPlaying = mode === 'online';
+        stopRetry(); saveSession(null); pausedUntil = 0;
         const s = ws; ws = null; if (s) s.close();
+        if (quiet) { goMenu(); break; }
         mode = 'menu';
-        message(m.code === 'nogame' ? 'Game not found' : 'Oops', m.msg, [
-          { label: 'Start a new game', onClick: () => { history.replaceState(null, '', location.pathname); goMenu(); } },
+        const title = m.code === 'nogame' ? 'Game not found' : (m.code === 'norejoin' && wasPlaying ? 'Game over' : 'Oops');
+        message(title, m.msg, [
+          { label: 'Back to menu', onClick: () => { history.replaceState(null, '', location.pathname); goMenu(); } },
         ]);
         break;
       }
@@ -215,6 +309,12 @@
     $('watchers').textContent = role === 'spectator' ? `👀 Spectating · ${spectators} watching` : `👀 ${spectators} watching`;
 
     const banner = $('banner'), sub = $('sub');
+    if (pausedUntil) {
+      banner.hidden = true; sub.hidden = false;
+      sub.textContent = `${pausedWho} lost connection. Waiting for them to come back… ${Math.max(0, Math.ceil((pausedUntil - performance.now()) / 1000))}s`;
+      return;
+    }
+    if (netNote) { banner.hidden = true; sub.hidden = false; sub.textContent = `${netNote} ${secsLeft()}s`; return; }
     if (s.ph !== lastPhase) {
       lastPhase = s.ph;
       if (s.ph === 'over') {
@@ -331,13 +431,15 @@
     ]);
   });
 
-  try { $('name').value = localStorage.getItem('bm-name') || ''; } catch (e) { /* ignore */ }
+  myName = savedName();
+  showNameUI(!myName);
+  $('btnChange').addEventListener('click', () => showNameUI(true));
   if (inviteCode) {
     $('joinNote').hidden = false; $('joinCode').textContent = inviteCode;
     $('btnJoin').hidden = false; $('btnCreate').hidden = true;
   }
   $('menuBtn').hidden = true;
-  show('pMenu');
+  if (!resumeSession()) show('pMenu');
   requestAnimationFrame(frame);
 
   // No stray selection, caret or focus ring from clicking around, and a clicked button must not keep the keyboard

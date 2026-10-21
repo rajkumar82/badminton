@@ -32,6 +32,17 @@ Hold the shot key and press `Space` together; the key held in the first moments 
 the serve is struck the server has to stay behind the short service line (the lit-up green zone); the receiver may
 move up to the net and play the serve at once.
 
+## Connections and names
+
+- **Reconnecting:** if a player's connection drops (refresh, network blip, closed tab) the game is paused for up to a
+  minute and the other player and any spectators see a countdown. The player's page rejoins the same seat by itself
+  (a token kept in `sessionStorage`), so refreshing mid-game just carries on. Pressing the leave button ends the game
+  straight away. The wait is `RECONNECT_GRACE_MS` on the server (60 s by default).
+- **First connection:** the browser keeps trying to reach the server for a minute (a server that is still waking up
+  can take a few seconds) before it gives up, with a cancel button.
+- **Name:** typed once, then remembered in this browser (`localStorage`, with a cookie as a backup) and shown as
+  "Playing as ..." with a change link.
+
 ## How it works
 
 - `public/js/sim.js` is the whole game: player movement, the swing and hit zone, the shuttle (gravity plus quadratic
