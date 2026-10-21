@@ -16,7 +16,7 @@
   let view = null;             // snapshot being drawn
   let lastPhase = '', lastScore = '0-0';
   let rematchSent = false;
-  const keys = { left: false, right: false, jump: false, down: false, hit: false };
+  const keys = { left: false, right: false, jump: false, smash: false, drop: false, normal: false, hit: false };
 
   const inviteCode = (new URLSearchParams(location.search).get('g') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
 
@@ -152,8 +152,9 @@
 
   // ---------- input ----------
   const KEYMAP = {
-    KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
-    KeyW: 'jump', ArrowUp: 'jump', KeyS: 'down', ArrowDown: 'down', Space: 'hit', KeyJ: 'hit', Enter: 'hit',
+    ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'jump', KeyW: 'jump',
+    KeyS: 'smash', KeyD: 'drop', KeyA: 'normal',
+    Space: 'hit', Enter: 'hit',
   };
   function sendInput() {
     if (mode === 'local' && game) game.setInput(0, keys);

@@ -19,6 +19,7 @@
       this.holdHit = 0;
       this.wantJump = false;
       this.down = false;
+      this.smash = false;
       this.serveAt = 0;
       this.lastHit = false;
     }
@@ -69,8 +70,9 @@
         // placement: hard bots drop when the opponent is deep and clear when they are at the net
         const foeDeep = Math.abs(foe.x - Sim.NET_X) > 3.8;
         this.down = Math.random() < cfg.smart ? foeDeep : Math.random() < 0.15;
+        this.smash = Math.random() < 0.25 + 0.7 * cfg.smart;
       }
-      if (!incoming || !canHit) { this.targetX = null; this.wantJump = false; this.down = false; }
+      if (!incoming || !canHit) { this.targetX = null; this.wantJump = false; this.down = false; this.smash = false; }
 
       const tx = this.targetX === null ? home : this.targetX;
       this.goTo(me, tx, input);
@@ -80,7 +82,9 @@
         const dist = Math.hypot(s.x - c.x, s.y - c.y);
         // jump so that the racket reaches a high shuttle just as it arrives
         if (this.wantJump && me.y === 0 && Math.abs(me.x - tx) < 0.8 && s.y > 2.6 && Math.hypot(s.x - c.x, s.y - c.y) < 2.6) input.jump = true;
-        input.down = this.down && !(me.y > 0.25 && s.y > me.y + 1.9 && Math.random() < cfg.smart);
+        const high = s.y > me.y + 1.9;
+        input.smash = this.smash && high;
+        input.drop = !input.smash && this.down;
         const closing = dist < Sim.REACH * 1.15 + 0.35;
         if (closing && me.swing < 0) input.hit = true;
       }

@@ -120,6 +120,18 @@ const Renderer = (() => {
       }
     }
 
+    // while a serve is pending, light up the part of the floor the server may stand on (behind the short service line)
+    function drawServeZone(server) {
+      const x0 = server === 0 ? 0 : NET_X + 1.98, x1 = server === 0 ? NET_X - 1.98 : COURT_W;
+      const yb = FY + (H - FY) * 0.78;
+      const pulse = 0.5 + 0.5 * Math.sin(time * 4);
+      ctx.fillStyle = `rgba(74,222,128,${0.14 + 0.08 * pulse})`;
+      ctx.fillRect(sx(x0), FY, sx(x1) - sx(x0), yb - FY);
+      ctx.strokeStyle = `rgba(134,239,172,${0.6 + 0.4 * pulse})`; ctx.lineWidth = Math.max(3, 0.07 * S);
+      const lx = sx(server === 0 ? x1 : x0);
+      ctx.beginPath(); ctx.moveTo(lx, FY); ctx.lineTo(lx, yb); ctx.stroke();
+    }
+
     function drawNet() {
       const x = sx(NET_X), top = sy(NET_H), bottom = FY;
       // posts
@@ -316,6 +328,7 @@ const Renderer = (() => {
         const sh = snap.sh;
         // shuttle shadow: smaller and fainter the higher it is
         drawShadow(sh[0], 0, 0.22 / (1 + sh[1] * 0.25), 0.3 / (1 + sh[1] * 0.2));
+        if (snap.ph === 'serve') drawServeZone(snap.sv);
         drawNet();
         const order = [0, 1];
         for (const i of order) drawPlayer(snap.p[i], i, meta.names[i], meta.seat === i);

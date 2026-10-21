@@ -8,6 +8,7 @@
   const COURT_W = 13.4;
   const NET_X = COURT_W / 2;
   const NET_H = 1.55;
+  const SERVICE_LINE = 1.98;     // short service line, metres from the net
   const DT = 1 / 120;           // fixed physics step
   const GRAVITY = 9.8;          // shuttle
   const DRAG = 0.2;             // quadratic drag: terminal velocity = sqrt(g / k), about 7 m/s like a real shuttle
@@ -31,7 +32,7 @@
     drop: { speed: 8.5, angle: 26 },
     smash: { speed: 35, angle: -21 },
     lift: { speed: 23.5, angle: 62 },
-    serve: { speed: 17, angle: 58 },
+    serve: { speed: 9, angle: 45 },
   };
 
   function newPlayer(idx) {
@@ -63,7 +64,8 @@
 
     setInput(idx, input) {
       const i = this.inputs[idx];
-      i.left = !!input.left; i.right = !!input.right; i.jump = !!input.jump; i.down = !!input.down;
+      i.left = !!input.left; i.right = !!input.right; i.jump = !!input.jump;
+      i.smash = !!input.smash; i.drop = !!input.drop; i.normal = !!input.normal;
       if (input.hit && !i.hit) i.hitQueued = true; // a tap shorter than one physics step must still count
       i.hit = !!input.hit;
     }
@@ -100,8 +102,12 @@
       const maxDv = MOVE_ACC * dt;
       p.vx += Math.abs(dv) <= maxDv ? dv : Math.sign(dv) * maxDv;
       p.x += p.vx * dt;
-      const lo = p.idx === 0 ? 0.35 : NET_X + 0.45;
-      const hi = p.idx === 0 ? NET_X - 0.45 : COURT_W - 0.35;
+      let lo = p.idx === 0 ? 0.35 : NET_X + 0.45;
+      let hi = p.idx === 0 ? NET_X - 0.45 : COURT_W - 0.35;
+      // until the serve is struck the server has to stay behind the short service line; the receiver may go anywhere
+      if (this.phase === 'serve' && p.idx === this.server) {
+        if (p.idx === 0) hi = NET_X - SERVICE_LINE; else lo = NET_X + SERVICE_LINE;
+      }
       if (p.x < lo) { p.x = lo; p.vx = Math.max(p.vx, 0); }
       if (p.x > hi) { p.x = hi; p.vx = Math.min(p.vx, 0); }
 
@@ -123,23 +129,25 @@
       }
       if (p.swing >= 0) {
         p.swing += dt;
+        if (p.swing < HIT_FROM) p.shot = this.pickShot(p);
         if (p.swing >= HIT_FROM && p.swing <= HIT_TO && !p.hitDone) this.tryHit(p);
         if (p.swing >= SWING_TIME) { p.swing = -1; p.cooldown = SWING_COOLDOWN; }
       }
     }
 
-    // The kind of shot is decided from the situation at the moment of the swing, so the swing animation can show it.
+    // The kind of shot comes from the keys held with the swing: S smash, D drop, A normal return. With none of them
+    // a low shuttle is lifted, forward gives a flat drive and anything else is a clear. Decided from the keys held
+    // during the first moments of the swing, so S + Space pressed almost together still works.
     pickShot(p) {
       const inp = this.inputs[p.idx];
       const s = this.shuttle;
       if (this.phase === 'serve' && p.idx === this.server) return 'serve';
-      const forward = p.face > 0 ? inp.right : inp.left;
-      const airborne = p.y > 0.25;
-      if (inp.down) return 'drop';
-      if (airborne && s.y > p.y + 1.9) return 'smash';
+      if (inp.smash) return 'smash';
+      if (inp.drop) return 'drop';
       if (s.y < 0.9) return 'lift';
-      if (forward) return 'drive';
-      return 'clear';
+      if (inp.normal) return 'clear';
+      const forward = p.face > 0 ? inp.right : inp.left;
+      return forward ? 'drive' : 'clear';
     }
 
     hitCentre(p) {
@@ -173,7 +181,8 @@
 
     launch(p, type) {
       const s = this.shuttle;
-      const shot = SHOTS[type];
+      const shot = { speed: SHOTS[type].speed, angle: SHOTS[type].angle };
+      if (type === 'serve') shot.speed = serveSpeed(s.x, s.y, p.face);
       let a = shot.angle * Math.PI / 180;
       if (type === 'smash') {
         // aim just over the tape: steep when hitting close to the net, flatter from further back
@@ -262,7 +271,26 @@
     }
   }
 
-  function blankInput() { return { left: false, right: false, jump: false, down: false, hit: false, hitQueued: false }; }
+  // A serve is a low, quick shot that should land a couple of metres past the net wherever the server stands.
+  // Find the launch speed whose flight ends there (range grows steadily with speed, so bisect).
+  function serveSpeed(x, y, face) {
+    const a = SHOTS.serve.angle * Math.PI / 180;
+    const want = Math.abs(NET_X + face * 2.4 - x);
+    let lo = 6, hi = 22;
+    for (let i = 0; i < 12; i++) {
+      const mid = (lo + hi) / 2;
+      let px = 0, py = y, vx = mid * Math.cos(a), vy = mid * Math.sin(a);
+      for (let k = 0; k < 600 && py > 0; k++) {
+        const sp = Math.hypot(vx, vy), dt = 1 / 60;
+        vx += -DRAG * sp * vx * dt; vy += (-GRAVITY - DRAG * sp * vy) * dt;
+        px += vx * dt; py += vy * dt;
+      }
+      if (px < want) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  function blankInput() { return { left: false, right: false, jump: false, smash: false, drop: false, normal: false, hit: false, hitQueued: false }; }
 
   // Where will the shuttle be when it comes down to height `atY`? Returns { x, t } or null if it never gets there.
   function predict(sh, atY) {
@@ -279,5 +307,5 @@
     return null;
   }
 
-  return { Game, predict, blankInput, SHOTS, COURT_W, NET_X, NET_H, DT, REACH, SWING_TIME, HIT_FROM, HIT_TO, WIN_SCORE, WIN_BY, POINT_PAUSE };
+  return { Game, predict, blankInput, SHOTS, COURT_W, NET_X, NET_H, SERVICE_LINE, DT, REACH, SWING_TIME, HIT_FROM, HIT_TO, WIN_SCORE, WIN_BY, POINT_PAUSE };
 }));

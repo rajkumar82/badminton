@@ -19,13 +19,17 @@ hits the net, lands on the hitter's own side or lands out scores for the opponen
 
 | Key | Action |
 | --- | --- |
-| `A` `D` or arrows | move |
-| `W` or up | jump |
+| left / right arrows | move |
+| up arrow (or `W`) | jump |
 | `Space` | swing (also serves) |
-| hold `S` + `Space` | drop shot |
-| hold forward + `Space` | flat drive |
-| jump + `Space` on a high shuttle | smash |
-| `Space` on a low shuttle | defensive lift |
+| `S` + `Space` | smash (needs a shuttle above head height, jumping makes it harder to defend) |
+| `D` + `Space` | drop shot |
+| `A` + `Space` | normal return (clear, or a lift when the shuttle is low) |
+| forward arrow + `Space` | flat drive |
+
+Hold the shot key and press `Space` together; the key held in the first moments of the swing decides the shot. Until
+the serve is struck the server has to stay behind the short service line (the lit-up green zone); the receiver may
+move up to the net and play the serve at once.
 
 ## How it works
 
