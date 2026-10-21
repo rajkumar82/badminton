@@ -468,7 +468,7 @@ const Renderer = (() => {
       for (let i = 0; i < 3; i++) {
         const x = NET_X + face * Sim.AIM_DIST[i];
         const cx = floorX(x), sel = i === aim;
-        const rr = (sel ? 0.5 + 0.07 * pulse : 0.34) * S;
+        const rr = (sel ? Math.max(0.5, Sim.AIM_SPREAD[i] * (height === 0 ? 1.3 : 1)) + 0.05 * pulse : 0.34) * S;   // the lit ring is as wide as the serve may stray
         ctx.lineWidth = sel ? 3 : 2;
         ctx.strokeStyle = sel ? `rgba(253,224,71,${0.85 + 0.15 * pulse})` : 'rgba(255,255,255,0.4)';
         ctx.fillStyle = sel ? `rgba(253,224,71,${0.2 + 0.14 * pulse})` : 'rgba(255,255,255,0.07)';

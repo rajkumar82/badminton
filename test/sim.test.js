@@ -32,7 +32,7 @@ test('after the serve is struck both players are free', () => {
 
 test('the serve crosses the net and lands in the receivers court', () => {
   for (const x of [1.5, 3.5, Sim.NET_X - Sim.SERVICE_LINE]) {
-    const g = new Sim.Game();
+    const g = new Sim.Game({ rng: () => 0.5 });
     g.players[0].x = x;
     g.setInput(0, { hit: true });
     run(g, 4);
@@ -144,7 +144,7 @@ test('a very short tap of the arrow key still counts', () => {
 
 test('the serve lands where it was aimed, for every length and height', () => {
   for (const aim of [0, 1, 2]) for (const key of [{}, { smash: true }, { drop: true }]) {
-    const g = new Sim.Game();
+    const g = new Sim.Game({ rng: () => 0.5 });
     g.players[0].x = 3.0; g.serveAim[0] = aim;
     g.setInput(0, Object.assign({ hit: true }, key));
     let landed = null;
@@ -159,7 +159,7 @@ test('the serve lands where it was aimed, for every length and height', () => {
 
 test('S gives a flat fast serve and D a high lob', () => {
   const apex = (key) => {
-    const g = new Sim.Game();
+    const g = new Sim.Game({ rng: () => 0.5 });
     g.players[0].x = 3.0;
     g.setInput(0, Object.assign({ hit: true }, key));
     let top = 0;
@@ -176,4 +176,36 @@ test('the server cannot jump while the serve is pending', () => {
   g.setInput(0, { jump: true });
   run(g, 0.3);
   assert.strictEqual(g.players[0].y, 0);
+});
+
+test('serves are approximate: they land around the target, sometimes short or out', () => {
+  const landings = [];
+  const stray = { net: 0, out: 0, inCourt: 0 };
+  for (let n = 0; n < 150; n++) {
+    const g = new Sim.Game();
+    g.players[0].x = 3.0; g.serveAim[0] = 2;            // far: the loosest
+    g.setInput(0, { hit: true });
+    for (let i = 0; i < 6 / Sim.DT && g.phase !== 'point'; i++) g.step();
+    const x = g.shuttle.x;
+    landings.push(x);
+    if (x < Sim.NET_X) stray.net++; else if (x > Sim.COURT_W) stray.out++; else stray.inCourt++;
+  }
+  const mean = landings.reduce((a, b) => a + b, 0) / landings.length;
+  const sd = Math.sqrt(landings.reduce((a, b) => a + (b - mean) ** 2, 0) / landings.length);
+  assert.ok(Math.abs(mean - (Sim.NET_X + Sim.AIM_DIST[2])) < 0.5, `mean landing ${mean}`);
+  assert.ok(sd > 0.6 && sd < 1.8, `spread ${sd}`);
+  assert.ok(stray.inCourt > 90, 'most land in');
+  assert.ok(stray.out > 0, 'some go out');
+});
+
+test('a short serve can clip the net', () => {
+  let faults = 0;
+  for (let n = 0; n < 300; n++) {
+    const g = new Sim.Game();
+    g.players[0].x = 4.5; g.serveAim[0] = 0;            // near, from right behind the line
+    g.setInput(0, { hit: true, smash: true });          // flat, so it has little room to spare
+    for (let i = 0; i < 4 / Sim.DT && g.phase !== 'point'; i++) g.step();
+    if (g.score[1] === 1) faults++;
+  }
+  assert.ok(faults > 0 && faults < 150, `faults ${faults}`);
 });

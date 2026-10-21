@@ -16,6 +16,8 @@
     [40, 44, 48, 52, 56, 60],
     [60, 64, 68, 72, 76],
   ];
+  const AIM_SPREAD = [0.5, 0.85, 1.15];   // how far a serve may stray from the aimed spot (about one standard deviation)
+  const HEIGHT_SPREAD = [1.3, 1, 1.1];    // flat fast serves are the hardest to place, normal ones the easiest
   const SERVICE_LINE = 1.98;     // short service line, metres from the net
   const DT = 1 / 120;           // fixed physics step
   const GRAVITY = 9.8;          // shuttle
@@ -50,6 +52,7 @@
   class Game {
     constructor(opts = {}) {
       this.target = opts.target || WIN_SCORE;
+      this.rng = opts.rng || Math.random;
       this.reset(opts.server || 0);
     }
 
@@ -209,7 +212,10 @@
       const s = this.shuttle;
       const shot = { speed: SHOTS[type].speed, angle: SHOTS[type].angle };
       if (type === 'serve') {
-        const sv = serveShot(s.x, s.y, p.face, NET_X + p.face * AIM_DIST[this.serveAim[p.idx]], p.serveH === undefined ? 1 : p.serveH);
+        const aim = this.serveAim[p.idx], h = p.serveH === undefined ? 1 : p.serveH;
+        // three uniform numbers added together give a bell-shaped error: usually close, sometimes well off
+        const err = (this.rng() + this.rng() + this.rng() - 1.5) * 2 * AIM_SPREAD[aim] * HEIGHT_SPREAD[h];
+        const sv = serveShot(s.x, s.y, p.face, NET_X + p.face * (AIM_DIST[aim] + err), h);
         shot.speed = sv.speed; shot.angle = sv.angle;
       }
       else if (type === 'drive') shot.speed = speedToLand(s.x, s.y, p.face, shot.angle, NET_X + p.face * 5.4, 12, 34);
@@ -381,5 +387,5 @@
     return null;
   }
 
-  return { Game, predict, blankInput, serveShot, serveTrajectory, AIM_DIST, SHOTS, COURT_W, NET_X, NET_H, SERVICE_LINE, DT, REACH, SWING_TIME, HIT_FROM, HIT_TO, WIN_SCORE, WIN_BY, POINT_PAUSE };
+  return { Game, predict, blankInput, serveShot, serveTrajectory, AIM_DIST, AIM_SPREAD, SHOTS, COURT_W, NET_X, NET_H, SERVICE_LINE, DT, REACH, SWING_TIME, HIT_FROM, HIT_TO, WIN_SCORE, WIN_BY, POINT_PAUSE };
 }));

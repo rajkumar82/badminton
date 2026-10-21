@@ -336,7 +336,7 @@
     }
     if (s.ph === 'serve') {
       banner.hidden = true; sub.hidden = false;
-      sub.textContent = s.sv === seat ? 'Your serve: ↑ ↓ choose how far, hold S (flat) or D (high), then Space' : `${names[s.sv]} to serve`;
+      sub.textContent = s.sv === seat ? 'Your serve: ↑ ↓ how far, hold S (flat) or D (high), then Space. It lands somewhere near the ring' : `${names[s.sv]} to serve`;
     } else if (s.ph === 'point') {
       banner.hidden = false; sub.hidden = true;
       banner.textContent = `${names[s.sv]} scores!`;
