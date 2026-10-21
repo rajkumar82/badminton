@@ -5,9 +5,9 @@
   else root.AI = factory(root.Sim);
 }(typeof self !== 'undefined' ? self : this, function (Sim) {
   const LEVELS = [
-    { reaction: 0.32, error: 0.9, jumpy: 0.5, smart: 0.2, serveDelay: 1.6 },
-    { reaction: 0.18, error: 0.45, jumpy: 0.8, smart: 0.5, serveDelay: 1.1 },
-    { reaction: 0.07, error: 0.15, jumpy: 1, smart: 0.9, serveDelay: 0.8 },
+    { reaction: 0.5, error: 1.7, jumpy: 0.3, smart: 0.1, serveDelay: 1.8 },
+    { reaction: 0.22, error: 0.7, jumpy: 0.7, smart: 0.45, serveDelay: 1.2 },
+    { reaction: 0.06, error: 0.12, jumpy: 1, smart: 0.95, serveDelay: 0.8 },
   ];
 
   class Bot {
@@ -85,6 +85,7 @@
         const high = s.y > me.y + 1.9;
         input.smash = this.smash && high;
         input.drop = !input.smash && this.down;
+        input.normal = !input.smash && !input.drop; // never a drive just because it is running forward
         const closing = dist < Sim.REACH * 1.15 + 0.35;
         if (closing && me.swing < 0) input.hit = true;
       }

@@ -13,7 +13,8 @@ real drag, and synthesised sounds. Play a friend online or play the computer.
 
 Rally scoring: every rally is a point. The winner of a point serves next. First to 15 wins, but once it is 14-14 the
 game goes on until someone leads by two. A shot that lands in the opponent's half scores for the hitter; one that
-hits the net, lands on the hitter's own side or lands out scores for the opponent.
+hits the net, lands on the hitter's own side or lands out scores for the opponent. A player may not hit the shuttle
+twice in a row (the server cannot hit their own serve), and may step up to one metre behind the back line.
 
 ## Controls
 

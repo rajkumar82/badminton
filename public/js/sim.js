@@ -8,6 +8,8 @@
   const COURT_W = 13.4;
   const NET_X = COURT_W / 2;
   const NET_H = 1.55;
+  const BACK_ROOM = 1.0;         // how far behind the back line a player may stand
+  const SMASH_CLEARANCE = 0.7;   // a smash is aimed this far above the net tape
   const SERVICE_LINE = 1.98;     // short service line, metres from the net
   const DT = 1 / 120;           // fixed physics step
   const GRAVITY = 9.8;          // shuttle
@@ -102,8 +104,9 @@
       const maxDv = MOVE_ACC * dt;
       p.vx += Math.abs(dv) <= maxDv ? dv : Math.sign(dv) * maxDv;
       p.x += p.vx * dt;
-      let lo = p.idx === 0 ? 0.35 : NET_X + 0.45;
-      let hi = p.idx === 0 ? NET_X - 0.45 : COURT_W - 0.35;
+      // players may step behind the back line (to reach shuttles that land near it), but only so far
+      let lo = p.idx === 0 ? -BACK_ROOM : NET_X + 0.45;
+      let hi = p.idx === 0 ? NET_X - 0.45 : COURT_W + BACK_ROOM;
       // until the serve is struck the server has to stay behind the short service line; the receiver may go anywhere
       if (this.phase === 'serve' && p.idx === this.server) {
         if (p.idx === 0) hi = NET_X - SERVICE_LINE; else lo = NET_X + SERVICE_LINE;
@@ -160,6 +163,8 @@
         if (p.idx !== this.server) return;
         p.hitDone = true;
         this.launch(p, 'serve');
+        this.lastHitter = p.idx;   // the server may not hit their own serve again
+        this.rallyHits = 1;
         this.phase = 'rally'; this.phaseTime = 0;
         this.events.push({ k: 'hit', t: 'serve', x: s.x, y: s.y, p: 0.3, i: p.idx });
         return;
@@ -182,12 +187,13 @@
     launch(p, type) {
       const s = this.shuttle;
       const shot = { speed: SHOTS[type].speed, angle: SHOTS[type].angle };
-      if (type === 'serve') shot.speed = serveSpeed(s.x, s.y, p.face);
+      if (type === 'serve') shot.speed = speedToLand(s.x, s.y, p.face, shot.angle, NET_X + p.face * 2.4, 6, 22);
+      else if (type === 'drive') shot.speed = speedToLand(s.x, s.y, p.face, shot.angle, NET_X + p.face * 5.4, 12, 34);
       let a = shot.angle * Math.PI / 180;
       if (type === 'smash') {
         // aim just over the tape: steep when hitting close to the net, flatter from further back
         const toNet = Math.max(0.35, Math.abs(NET_X - s.x));
-        a = Math.max(-0.6, Math.min(-0.2, Math.atan2(NET_H + 0.45 - s.y, toNet) + 0.06));
+        a = Math.max(-0.6, Math.min(-0.04, Math.atan2(NET_H + SMASH_CLEARANCE - s.y, toNet) + 0.05));
       }
       // the shuttle was flying cork-first towards the racket; the spring in stepShuttle flips it round after the hit
       s.ang = s.speed > 1 ? Math.atan2(s.vy, s.vx) : s.ang;
@@ -271,12 +277,11 @@
     }
   }
 
-  // A serve is a low, quick shot that should land a couple of metres past the net wherever the server stands.
-  // Find the launch speed whose flight ends there (range grows steadily with speed, so bisect).
-  function serveSpeed(x, y, face) {
-    const a = SHOTS.serve.angle * Math.PI / 180;
-    const want = Math.abs(NET_X + face * 2.4 - x);
-    let lo = 6, hi = 22;
+  // Find the launch speed at which a shot fired at `angleDeg` from (x, y) comes down at `targetX` (range grows steadily
+  // with speed, so bisect). Used so a serve or a drive lands in the opponent's court wherever it is hit from.
+  function speedToLand(x, y, face, angleDeg, targetX, lo, hi) {
+    const a = angleDeg * Math.PI / 180;
+    const want = Math.abs(targetX - x);
     for (let i = 0; i < 12; i++) {
       const mid = (lo + hi) / 2;
       let px = 0, py = y, vx = mid * Math.cos(a), vy = mid * Math.sin(a);
