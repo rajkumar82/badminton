@@ -384,12 +384,17 @@ const Renderer = (() => {
     function drawServeZone(server) {
       const x0 = server === 0 ? 0 : NET_X + 1.98, x1 = server === 0 ? NET_X - 1.98 : COURT_W;
       const yb = FY + (H - FY) * 0.78;
+      // the same slant the court lines on the floor use, so the highlight sits exactly between them
+      const bottom = (x) => sx(x) + (sx(x) - W / 2) * 0.12;
       const pulse = 0.5 + 0.5 * Math.sin(time * 4);
-      ctx.fillStyle = `rgba(255,255,255,${0.12 + 0.08 * pulse})`;
-      ctx.fillRect(sx(x0), FY, sx(x1) - sx(x0), yb - FY);
-      ctx.strokeStyle = `rgba(253,224,71,${0.65 + 0.35 * pulse})`; ctx.lineWidth = Math.max(3, 0.07 * S);
-      const lx = sx(server === 0 ? x1 : x0);
-      ctx.beginPath(); ctx.moveTo(lx, FY); ctx.lineTo(lx, yb); ctx.stroke();
+      ctx.fillStyle = `rgba(253,224,71,${0.16 + 0.1 * pulse})`;
+      ctx.beginPath();
+      ctx.moveTo(sx(x0), FY); ctx.lineTo(sx(x1), FY); ctx.lineTo(bottom(x1), yb); ctx.lineTo(bottom(x0), yb); ctx.closePath();
+      ctx.fill();
+      // light up the service line the server must stay behind
+      const xl = server === 0 ? x1 : x0;
+      ctx.strokeStyle = `rgba(253,224,71,${0.7 + 0.3 * pulse})`; ctx.lineWidth = Math.max(3, 0.07 * S); ctx.lineCap = 'butt';
+      ctx.beginPath(); ctx.moveTo(sx(xl), FY); ctx.lineTo(bottom(xl), yb); ctx.stroke();
     }
 
     function drawNet() {
