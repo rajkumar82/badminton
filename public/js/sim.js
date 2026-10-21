@@ -115,8 +115,16 @@
       const target = dir * MOVE_SPEED;
       const dv = target - p.vx;
       const maxDv = MOVE_ACC * dt;
+      const vxBefore = p.vx;
       p.vx += Math.abs(dv) <= maxDv ? dv : Math.sign(dv) * maxDv;
       p.x += p.vx * dt;
+      // footsteps while running, and a squeak when a fast runner stops or turns
+      if (p.y === 0 && !frozen) {
+        p.stepDist = (p.stepDist || 0) + Math.abs(p.vx) * dt;
+        if (p.stepDist > 0.62 && Math.abs(p.vx) > 1) { p.stepDist = 0; this.events.push({ k: 'step', x: p.x, i: p.idx, v: Math.min(1, Math.abs(p.vx) / MOVE_SPEED) }); }
+        p.sqCool = (p.sqCool || 0) - dt;
+        if (p.sqCool <= 0 && Math.abs(vxBefore) > 4.2 && (dir === 0 || Math.sign(dir) !== Math.sign(vxBefore))) { p.sqCool = 0.35; this.events.push({ k: 'squeak', x: p.x, i: p.idx }); }
+      }
       // players may step behind the back line (to reach shuttles that land near it), but only so far
       let lo = p.idx === 0 ? -BACK_ROOM : NET_X + 0.45;
       let hi = p.idx === 0 ? NET_X - 0.45 : COURT_W + BACK_ROOM;

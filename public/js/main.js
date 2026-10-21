@@ -50,6 +50,7 @@
     mode = 'menu'; game = null; bot = null; view = null; buffer = []; seat = -1; room = null;
     renderer.reset();
     $('hud').hidden = true; $('banner').hidden = true; $('sub').hidden = true; $('menuBtn').hidden = true;
+    Sound.ambience(false);
     history.replaceState(null, '', location.pathname);
     $('joinNote').hidden = true; $('btnJoin').hidden = true; $('btnCreate').hidden = false;
     show('pMenu');
@@ -94,7 +95,7 @@
     bot = new AI.Bot(1, level);
     acc = 0; renderer.reset(); lastPhase = ''; lastScore = '0-0';
     $('hud').hidden = false; $('menuBtn').hidden = false; show(null);
-    updateNames();
+    updateNames(); Sound.ambience(true);
   }
 
   // ---------- online ----------
@@ -191,7 +192,7 @@
         saveSession({ code: room.code, token: m.token || null });
         if (!m.resumed) { renderer.reset(); buffer = []; view = null; rematchSent = false; lastPhase = ''; lastScore = '0-0'; pausedUntil = 0; }
         else buffer = [];
-        $('hud').hidden = false; $('menuBtn').hidden = false; updateNames();
+        $('hud').hidden = false; $('menuBtn').hidden = false; updateNames(); Sound.ambience(true);
         if (role === 'player' && !room.started) {
           $('shareLink').value = link();
           $('btnShare').hidden = !navigator.share;
@@ -280,6 +281,8 @@
       else if (e.k === 'aim') { if (e.i === seat) Sound.blip(); }
       else if (e.k === 'net') Sound.net(e.p, e.x);
       else if (e.k === 'floor') Sound.floor(e.p, e.x);
+      else if (e.k === 'step') Sound.step(e.x, e.v);
+      else if (e.k === 'squeak') Sound.squeak(e.x);
       else if (e.k === 'jump') Sound.jump(e.x);
       else if (e.k === 'land') Sound.land(e.x);
       else if (e.k === 'point') Sound.point(seat < 0 ? true : e.w === seat);

@@ -62,7 +62,9 @@ move up to the net and play the serve at once.
 - `public/js/ai.js` is the computer player. It predicts where the shuttle will come down, runs there, jumps for
   high ones and chooses between clear, drop and smash.
 - `public/js/render.js` draws the canvas (arena, players with swing animations, net, trail, sparks, shake).
-  `public/js/audio.js` makes every sound with WebAudio (no audio files).
+  `public/js/audio.js` makes every sound with WebAudio (no audio files): a hit is a sharp click, the ring of the string
+  bed, a short cork thump and a faint feather rustle (a smash adds a hard crack), plus swishes, shoe squeaks and
+  footsteps (the simulation reports `step` and `squeak` events), the shuttle ticking on the floor, and a quiet hall murmur.
 - Shot speeds and angles live in `SHOTS` at the top of `sim.js`. `node test/tune.js` prints where each lands.
 
 ## Run it
