@@ -28,6 +28,11 @@ twice in a row (the server cannot hit their own serve), and may step up to one m
 | `A` + `Space` | normal return (clear, or a lift when the shuttle is low) |
 | forward arrow + `Space` | flat drive |
 
+**Serving:** before you serve, tap the up or down arrow to choose how far it lands (near, mid or far). Three spots light
+up on the opponent's half of the floor, the chosen one glows, and a dotted arc previews the flight. Hold `S` with
+`Space` for a flat fast serve or `D` with `Space` for a high lob (the arc and label update as you hold the key). The
+server cannot jump or cross the service line until the serve is struck. The computer varies its serves too.
+
 Hold the shot key and press `Space` together; the key held in the first moments of the swing decides the shot. Until
 the serve is struck the server has to stay behind the short service line (the lit-up green zone); the receiver may
 move up to the net and play the serve at once.

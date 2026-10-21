@@ -442,6 +442,54 @@ const Renderer = (() => {
       ctx.beginPath(); ctx.moveTo(sx(xl), FY); ctx.lineTo(bottom(xl), yb); ctx.stroke();
     }
 
+    // The serve aim: three spots on the opponent's half of the floor (near, mid, far) with the chosen one lit up, a
+    // dotted arc showing the flight for the chosen height, and a label. Only the server (and spectators) see it.
+    const arcCache = { key: '', pts: null };
+    function drawServeAim(snap) {
+      const server = snap.sv, [aim, targetX, height] = snap.sa;
+      const face = server === 0 ? 1 : -1;
+      const yb = FY + (H - FY) * 0.78, yMid = FY + (yb - FY) * 0.5;
+      const pulse = 0.5 + 0.5 * Math.sin(time * 6);
+      const floorX = (x) => sx(x) + (sx(x) - W / 2) * 0.12 * 0.5;
+      const names = ['NEAR', 'MID', 'FAR'];
+      // the flight of the serve, drawn in the side view
+      const pl = snap.p[server];
+      const sx0 = pl[0] + face * 0.55, sy0 = pl[1] + 1.15;
+      const key = `${sx0.toFixed(2)}|${sy0.toFixed(2)}|${face}|${targetX}|${height}`;
+      if (arcCache.key !== key) { arcCache.key = key; arcCache.pts = Sim.serveTrajectory(sx0, sy0, face, targetX, height); }
+      ctx.save();
+      ctx.strokeStyle = `rgba(253,224,71,${0.55 + 0.25 * pulse})`; ctx.lineWidth = Math.max(2, 0.04 * S); ctx.setLineDash([0.12 * S, 0.14 * S]); ctx.lineCap = 'round';
+      ctx.beginPath();
+      arcCache.pts.forEach((q, i) => { if (i) ctx.lineTo(sx(q.x), sy(q.y)); else ctx.moveTo(sx(q.x), sy(q.y)); });
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      // the three spots on the floor
+      for (let i = 0; i < 3; i++) {
+        const x = NET_X + face * Sim.AIM_DIST[i];
+        const cx = floorX(x), sel = i === aim;
+        const rr = (sel ? 0.5 + 0.07 * pulse : 0.34) * S;
+        ctx.lineWidth = sel ? 3 : 2;
+        ctx.strokeStyle = sel ? `rgba(253,224,71,${0.85 + 0.15 * pulse})` : 'rgba(255,255,255,0.4)';
+        ctx.fillStyle = sel ? `rgba(253,224,71,${0.2 + 0.14 * pulse})` : 'rgba(255,255,255,0.07)';
+        ctx.beginPath(); ctx.ellipse(cx, yMid, rr, rr * 0.28, 0, 0, 6.3); ctx.fill(); ctx.stroke();
+        if (sel) {
+          ctx.beginPath(); ctx.moveTo(cx - rr * 0.55, yMid); ctx.lineTo(cx + rr * 0.55, yMid); ctx.moveTo(cx, yMid - rr * 0.16); ctx.lineTo(cx, yMid + rr * 0.16); ctx.stroke();
+          // a line up to where the arc comes down, so the spot and the arc read as one thing
+          ctx.save(); ctx.setLineDash([4, 6]); ctx.strokeStyle = 'rgba(253,224,71,0.45)'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(sx(targetX), FY); ctx.lineTo(cx, yMid - rr * 0.28); ctx.stroke(); ctx.restore();
+        }
+        ctx.font = `${sel ? 800 : 600} ${Math.max(10, (sel ? 0.19 : 0.15) * S)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = sel ? '#fde047' : 'rgba(255,255,255,0.5)';
+        ctx.fillText(names[i], cx, yMid + rr * 0.28 + 0.22 * S);
+      }
+      // height label next to the server
+      ctx.font = `700 ${Math.max(11, 0.2 * S)}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = '#fde047';
+      const ht = ['FLAT & FAST', 'NORMAL', 'HIGH LOB'][height];
+      ctx.fillText(ht, sx(pl[0]), sy(2.95));
+    }
+
     function drawNet() {
       const x = sx(NET_X), top = sy(NET_H), bottom = FY;
       // posts
@@ -664,6 +712,7 @@ const Renderer = (() => {
         // shuttle shadow: smaller and fainter the higher it is
         drawShadow(sh[0], 0, 0.22 / (1 + sh[1] * 0.25), 0.3 / (1 + sh[1] * 0.2));
         if (snap.ph === 'serve') drawServeZone(snap.sv);
+        if (snap.ph === 'serve' && snap.sa && (meta.seat === snap.sv || meta.seat < 0)) drawServeAim(snap);
         drawNet();
         const order = [0, 1];
         for (const i of order) drawPlayer(snap.p[i], i, meta.names[i], meta.seat === i);

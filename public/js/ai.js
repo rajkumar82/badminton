@@ -22,6 +22,9 @@
       this.smash = false;
       this.serveAt = 0;
       this.lastHit = false;
+      this.lastFar = false; this.lastNear = false;
+      this.serveH = 1;
+      this.wantAim = 1;
     }
 
     // Returns the input for this moment. Called every physics step.
@@ -30,6 +33,10 @@
       // a swing needs a fresh press, so pulse the key rather than holding it down
       if (input.hit && this.lastHit) input.hit = false;
       this.lastHit = input.hit;
+      if (input.far && this.lastFar) input.far = false;
+      this.lastFar = input.far;
+      if (input.near && this.lastNear) input.near = false;
+      this.lastNear = input.near;
       return input;
     }
 
@@ -44,8 +51,17 @@
 
       if (game.phase === 'serve') {
         if (game.server === this.idx) {
-          if (this.serveAt === 0) this.serveAt = game.time + cfg.serveDelay;
-          if (game.time >= this.serveAt) input.hit = true;
+          if (this.serveAt === 0) {
+            this.serveAt = game.time + cfg.serveDelay;
+            // a different serve each time: how far it lands and how high it goes
+            this.wantAim = Math.random() < 0.4 ? 1 : Math.random() < 0.5 ? 0 : 2;
+            const r = Math.random();
+            this.serveH = r < 0.25 ? 0 : r < 0.5 ? 2 : 1;
+          }
+          const cur = game.serveAim[this.idx];
+          if (cur < this.wantAim) input.far = true; else if (cur > this.wantAim) input.near = true;
+          if (this.serveH === 0) input.smash = true; else if (this.serveH === 2) input.drop = true;
+          if (game.time >= this.serveAt && cur === this.wantAim) input.hit = true;
         } else this.serveAt = 0;
         this.goTo(me, home, input);
         return input;

@@ -121,3 +121,59 @@ test('a drive lands in the opponents court from anywhere in the front half', () 
     assert.ok(g.score[0] === 1 || g.score[1] === 0 && g.phase === 'rally', `drive from ${x}: ${JSON.stringify(g.score)}`);
   }
 });
+
+// ---- serve aiming ----
+test('up and down taps move the serve target between near, mid and far', () => {
+  const g = new Sim.Game();
+  assert.strictEqual(g.serveAim[0], 1);
+  g.setInput(0, { far: true }); run(g, 0.02); g.setInput(0, { far: false }); run(g, 0.02);
+  assert.strictEqual(g.serveAim[0], 2);
+  g.setInput(0, { far: true }); run(g, 0.02); g.setInput(0, { far: false }); run(g, 0.02);
+  assert.strictEqual(g.serveAim[0], 2, 'cannot go beyond far');
+  for (let i = 0; i < 3; i++) { g.setInput(0, { near: true }); run(g, 0.02); g.setInput(0, { near: false }); run(g, 0.02); }
+  assert.strictEqual(g.serveAim[0], 0);
+  assert.strictEqual(g.snapshot().sa[0], 0);
+});
+
+test('a very short tap of the arrow key still counts', () => {
+  const g = new Sim.Game();
+  g.setInput(0, { far: true }); g.setInput(0, { far: false });   // pressed and released before a physics step
+  run(g, 0.02);
+  assert.strictEqual(g.serveAim[0], 2);
+});
+
+test('the serve lands where it was aimed, for every length and height', () => {
+  for (const aim of [0, 1, 2]) for (const key of [{}, { smash: true }, { drop: true }]) {
+    const g = new Sim.Game();
+    g.players[0].x = 3.0; g.serveAim[0] = aim;
+    g.setInput(0, Object.assign({ hit: true }, key));
+    let landed = null;
+    for (let i = 0; i < 6 / Sim.DT && landed === null; i++) {
+      g.step();
+      if (g.drainEvents().some((e) => e.k === 'floor')) landed = g.shuttle.x;
+    }
+    const want = Sim.NET_X + Sim.AIM_DIST[aim];
+    assert.ok(landed !== null && Math.abs(landed - want) < 0.7, `aim ${aim} ${JSON.stringify(key)}: landed ${landed}, wanted ${want}`);
+  }
+});
+
+test('S gives a flat fast serve and D a high lob', () => {
+  const apex = (key) => {
+    const g = new Sim.Game();
+    g.players[0].x = 3.0;
+    g.setInput(0, Object.assign({ hit: true }, key));
+    let top = 0;
+    for (let i = 0; i < 3 / Sim.DT; i++) { g.step(); top = Math.max(top, g.shuttle.y); g.drainEvents(); }
+    return top;
+  };
+  const flat = apex({ smash: true }), normal = apex({}), high = apex({ drop: true });
+  assert.ok(flat < normal && normal < high, `apex flat ${flat}, normal ${normal}, high ${high}`);
+  assert.ok(high > 5, 'a lob goes properly high');
+});
+
+test('the server cannot jump while the serve is pending', () => {
+  const g = new Sim.Game();
+  g.setInput(0, { jump: true });
+  run(g, 0.3);
+  assert.strictEqual(g.players[0].y, 0);
+});

@@ -20,7 +20,7 @@
   let netNote = '';            // shown while the connection is being restored
   let pausedUntil = 0, pausedWho = '';
   const RETRY_MS = 60000;      // how long we keep trying to reach the server, and how long the server holds a seat
-  const keys = { left: false, right: false, jump: false, smash: false, drop: false, normal: false, hit: false };
+  const keys = { left: false, right: false, jump: false, smash: false, drop: false, normal: false, far: false, near: false, hit: false };
 
   const inviteCode = (new URLSearchParams(location.search).get('g') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
 
@@ -244,8 +244,9 @@
   }
 
   // ---------- input ----------
+  // arrow up/down double as "serve further / shorter" while a serve is pending (the server cannot jump then anyway)
   const KEYMAP = {
-    ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'jump', KeyW: 'jump',
+    ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: ['jump', 'far'], KeyW: ['jump', 'far'], ArrowDown: 'near',
     KeyS: 'smash', KeyD: 'drop', KeyA: 'normal',
     Space: 'hit', Enter: 'hit',
   };
@@ -255,8 +256,11 @@
   }
   function setKey(code, down) {
     const k = KEYMAP[code];
-    if (!k || keys[k] === down) return false;
-    keys[k] = down; sendInput(); return true;
+    if (!k) return false;
+    let changed = false;
+    for (const f of [].concat(k)) { if (keys[f] !== down) { keys[f] = down; changed = true; } }
+    if (changed) sendInput();
+    return changed;
   }
   window.addEventListener('keydown', (e) => {
     if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
@@ -273,6 +277,7 @@
     for (const e of events) {
       if (e.k === 'hit') Sound.hit(e.t, e.p, e.x);
       else if (e.k === 'swing') Sound.swing(e.x);
+      else if (e.k === 'aim') { if (e.i === seat) Sound.blip(); }
       else if (e.k === 'net') Sound.net(e.p, e.x);
       else if (e.k === 'floor') Sound.floor(e.p, e.x);
       else if (e.k === 'jump') Sound.jump(e.x);
@@ -331,7 +336,7 @@
     }
     if (s.ph === 'serve') {
       banner.hidden = true; sub.hidden = false;
-      sub.textContent = s.sv === seat ? 'Your serve: press SPACE' : `${names[s.sv]} to serve`;
+      sub.textContent = s.sv === seat ? 'Your serve: ↑ ↓ choose how far, hold S (flat) or D (high), then Space' : `${names[s.sv]} to serve`;
     } else if (s.ph === 'point') {
       banner.hidden = false; sub.hidden = true;
       banner.textContent = `${names[s.sv]} scores!`;

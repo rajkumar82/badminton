@@ -10,6 +10,12 @@
   const NET_H = 1.55;
   const BACK_ROOM = 1.0;         // how far behind the back line a player may stand
   const SMASH_CLEARANCE = 0.7;   // a smash is aimed this far above the net tape
+  const AIM_DIST = [1.6, 3.4, 5.4];      // where a serve lands, metres past the net: near, mid, far
+  const SERVE_ANGLES = [                  // launch angles tried (flattest first) for a low, normal and high serve
+    [26, 30, 34, 38, 42, 46],
+    [40, 44, 48, 52, 56, 60],
+    [60, 64, 68, 72, 76],
+  ];
   const SERVICE_LINE = 1.98;     // short service line, metres from the net
   const DT = 1 / 120;           // fixed physics step
   const GRAVITY = 9.8;          // shuttle
@@ -53,6 +59,7 @@
       this.prevHit = [false, false];
       this.score = [0, 0];
       this.server = server;
+      this.serveAim = [1, 1];      // each player's chosen serve length: 0 near, 1 mid, 2 far
       this.winner = -1;
       this.phase = 'serve';       // serve | rally | point | over
       this.phaseTime = 0;
@@ -68,6 +75,9 @@
       const i = this.inputs[idx];
       i.left = !!input.left; i.right = !!input.right; i.jump = !!input.jump;
       i.smash = !!input.smash; i.drop = !!input.drop; i.normal = !!input.normal;
+      if (input.far && !i.far) i.farQ = true;      // a tap shorter than one physics step must still count
+      if (input.near && !i.near) i.nearQ = true;
+      i.far = !!input.far; i.near = !!input.near;
       if (input.hit && !i.hit) i.hitQueued = true; // a tap shorter than one physics step must still count
       i.hit = !!input.hit;
     }
@@ -114,7 +124,13 @@
       if (p.x < lo) { p.x = lo; p.vx = Math.max(p.vx, 0); }
       if (p.x > hi) { p.x = hi; p.vx = Math.min(p.vx, 0); }
 
-      if (p.y === 0 && p.vy === 0 && inp.jump && !frozen) { p.vy = JUMP_V; this.events.push({ k: 'jump', x: p.x, i: p.idx }); }
+      const serving = this.phase === 'serve' && p.idx === this.server;
+      if (serving) {
+        if (inp.farQ && this.serveAim[p.idx] < 2) { this.serveAim[p.idx]++; this.events.push({ k: 'aim', i: p.idx, a: this.serveAim[p.idx] }); }
+        if (inp.nearQ && this.serveAim[p.idx] > 0) { this.serveAim[p.idx]--; this.events.push({ k: 'aim', i: p.idx, a: this.serveAim[p.idx] }); }
+      }
+      inp.farQ = false; inp.nearQ = false;
+      if (p.y === 0 && p.vy === 0 && inp.jump && !frozen && !serving) { p.vy = JUMP_V; this.events.push({ k: 'jump', x: p.x, i: p.idx }); }
       if (p.y > 0 || p.vy > 0) {
         p.vy -= PLAYER_G * dt;
         p.y += p.vy * dt;
@@ -132,7 +148,7 @@
       }
       if (p.swing >= 0) {
         p.swing += dt;
-        if (p.swing < HIT_FROM) p.shot = this.pickShot(p);
+        if (p.swing < HIT_FROM) { p.shot = this.pickShot(p); p.serveH = this.serveHeight(p.idx); }
         if (p.swing >= HIT_FROM && p.swing <= HIT_TO && !p.hitDone) this.tryHit(p);
         if (p.swing >= SWING_TIME) { p.swing = -1; p.cooldown = SWING_COOLDOWN; }
       }
@@ -151,6 +167,11 @@
       if (inp.normal) return 'clear';
       const forward = p.face > 0 ? inp.right : inp.left;
       return forward ? 'drive' : 'clear';
+    }
+
+    serveHeight(idx) {
+      const i = this.inputs[idx];
+      return i.smash ? 0 : i.drop ? 2 : 1;
     }
 
     hitCentre(p) {
@@ -187,7 +208,10 @@
     launch(p, type) {
       const s = this.shuttle;
       const shot = { speed: SHOTS[type].speed, angle: SHOTS[type].angle };
-      if (type === 'serve') shot.speed = speedToLand(s.x, s.y, p.face, shot.angle, NET_X + p.face * 2.4, 6, 22);
+      if (type === 'serve') {
+        const sv = serveShot(s.x, s.y, p.face, NET_X + p.face * AIM_DIST[this.serveAim[p.idx]], p.serveH === undefined ? 1 : p.serveH);
+        shot.speed = sv.speed; shot.angle = sv.angle;
+      }
       else if (type === 'drive') shot.speed = speedToLand(s.x, s.y, p.face, shot.angle, NET_X + p.face * 5.4, 12, 34);
       let a = shot.angle * Math.PI / 180;
       if (type === 'smash') {
@@ -272,6 +296,7 @@
         ph: this.phase, sc: this.score.slice(), sv: this.server, w: this.winner, gp: this.gamePoint(), lh: this.lastHitter,
         p: this.players.map((p) => [r(p.x), r(p.y), r(p.vx), r(p.vy), p.swing < 0 ? -1 : r(p.swing), p.shot]),
         sh: [r(s.x), r(s.y), r(s.vx), r(s.vy), r(s.ang)],
+        sa: this.phase === 'serve' ? [this.serveAim[this.server], r(NET_X + this.players[this.server].face * AIM_DIST[this.serveAim[this.server]]), this.serveHeight(this.server)] : null,
         ev: this.drainEvents(),
       };
     }
@@ -295,7 +320,51 @@
     return (lo + hi) / 2;
   }
 
-  function blankInput() { return { left: false, right: false, jump: false, smash: false, drop: false, normal: false, hit: false, hitQueued: false }; }
+  // height of a shot above the net tape when it passes, or -1 if it comes down before reaching the net
+  function heightAtNet(x, y, face, angleDeg, speed) {
+    const a = angleDeg * Math.PI / 180;
+    let px = x, py = y, vx = face * speed * Math.cos(a), vy = speed * Math.sin(a);
+    const dt = 1 / 60;
+    for (let k = 0; k < 600 && py > 0; k++) {
+      const sp = Math.hypot(vx, vy);
+      vx += -DRAG * sp * vx * dt; vy += (-GRAVITY - DRAG * sp * vy) * dt;
+      const nx = px + vx * dt, ny = py + vy * dt;
+      if ((px - NET_X) * (nx - NET_X) < 0) return py + (ny - py) * ((NET_X - px) / (nx - px));
+      px = nx; py = ny;
+    }
+    return -1;
+  }
+
+  // The serve for a chosen landing spot and height: the flattest launch angle of that style that still clears the net
+  // comfortably, with the speed that makes it come down on the spot.
+  function serveShot(x, y, face, targetX, heightIdx) {
+    let best = null;
+    for (const angle of SERVE_ANGLES[heightIdx]) {
+      const speed = speedToLand(x, y, face, angle, targetX, 4, 56);
+      const clear = heightAtNet(x, y, face, angle, speed);
+      best = { speed, angle };
+      if (clear >= NET_H + 0.3) break;
+    }
+    return best;
+  }
+
+  // The path a serve would take, as points, for the preview arc.
+  function serveTrajectory(x, y, face, targetX, heightIdx) {
+    const { speed, angle } = serveShot(x, y, face, targetX, heightIdx);
+    const a = angle * Math.PI / 180;
+    let px = x, py = y, vx = face * speed * Math.cos(a), vy = speed * Math.sin(a);
+    const pts = [{ x: px, y: py }];
+    const dt = 1 / 60;
+    for (let k = 0; k < 600 && py > 0; k++) {
+      const sp = Math.hypot(vx, vy);
+      vx += -DRAG * sp * vx * dt; vy += (-GRAVITY - DRAG * sp * vy) * dt;
+      px += vx * dt; py += vy * dt;
+      if (k % 3 === 0) pts.push({ x: px, y: Math.max(0, py) });
+    }
+    return pts;
+  }
+
+  function blankInput() { return { left: false, right: false, jump: false, smash: false, drop: false, normal: false, far: false, near: false, hit: false, hitQueued: false, farQ: false, nearQ: false }; }
 
   // Where will the shuttle be when it comes down to height `atY`? Returns { x, t } or null if it never gets there.
   function predict(sh, atY) {
@@ -312,5 +381,5 @@
     return null;
   }
 
-  return { Game, predict, blankInput, SHOTS, COURT_W, NET_X, NET_H, SERVICE_LINE, DT, REACH, SWING_TIME, HIT_FROM, HIT_TO, WIN_SCORE, WIN_BY, POINT_PAUSE };
+  return { Game, predict, blankInput, serveShot, serveTrajectory, AIM_DIST, SHOTS, COURT_W, NET_X, NET_H, SERVICE_LINE, DT, REACH, SWING_TIME, HIT_FROM, HIT_TO, WIN_SCORE, WIN_BY, POINT_PAUSE };
 }));
