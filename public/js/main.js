@@ -382,6 +382,7 @@
   // ---------- main loop ----------
   function frame(now) {
     const dt = Math.min(0.1, (now - lastFrame) / 1000); lastFrame = now;
+    const frameStart = performance.now();
     if (mode === 'local' && game && $('overlay').classList.contains('hidden')) {
       acc += dt;
       while (acc >= DT) {
@@ -394,7 +395,9 @@
     } else if (mode === 'local' && game) view = game.snapshot(); // paused behind a panel: keep drawing the same scene
     else if (mode === 'online') view = interpolated();
     if (view) updateHud(view);
+    const simMs = performance.now() - frameStart;
     renderer.draw(mode === 'menu' || mode === 'connecting' ? idleScene(now) : view, { names, seat });
+    if (window.__renderStats) window.__renderStats.sim = simMs;
     requestAnimationFrame(frame);
   }
 
@@ -457,6 +460,25 @@
   document.addEventListener('dblclick', (e) => { if (!e.target.closest('input')) e.preventDefault(); });
   document.addEventListener('selectstart', (e) => { if (!e.target.closest || !e.target.closest('input')) e.preventDefault(); });
   document.addEventListener('contextmenu', (e) => { if (e.target === canvas) e.preventDefault(); });
+
+  // add ?fps to the address to see the frame rate and render quality in the corner
+  if (/[?&]fps\b/.test(location.search)) {
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:10px;bottom:34px;font:12px/1.4 monospace;color:#fde68a;background:rgba(0,0,0,.55);padding:4px 8px;border-radius:6px;pointer-events:none;z-index:9';
+    document.body.appendChild(box);
+    let frames = 0, t0 = performance.now();
+    const tick = () => {
+      frames++;
+      const now = performance.now();
+      if (now - t0 >= 1000) {
+        const s = window.__renderStats || {};
+        box.textContent = `${Math.round(frames * 1000 / (now - t0))} fps · draw ${(s.total || 0).toFixed(1)} ms · quality ${Math.round(renderer.quality * 100)}% · ${canvas.width}x${canvas.height}`;
+        frames = 0; t0 = now;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
 
   // handy for tests and poking around in the console
   window.__bm = { get game() { return game; }, get view() { return view; }, get mode() { return mode; }, keys };

@@ -47,7 +47,15 @@ const Renderer = (() => {
   }
 
   function create(canvas) {
-    const ctx = canvas.getContext('2d');
+    const mainCtx = canvas.getContext('2d', { alpha: false });
+    let ctx = mainCtx;
+    // the crowd is drawn into its own small layer a few times a second and then blitted: the stands change slowly
+    const crowdLayer = document.createElement('canvas');
+    let crowdCtx = crowdLayer.getContext('2d');
+    let crowdTop = 0, crowdH = 0, crowdLast = -1e9;
+    // render quality: scale of the canvas backing store. Lowered automatically if the machine cannot keep up.
+    let quality = 1, slowFrames = 0, fastFrames = 0;
+    const CROWD_FPS = 14;
     let W = 0, H = 0, S = 1, OX = 0, FY = 0, dpr = 1;
     let bg = null;
     const trail = [];
@@ -56,16 +64,22 @@ const Renderer = (() => {
     const rings = [];
     let shake = 0, flash = 0, netWobble = 0, crowdJump = 0, time = 0;
     let confetti = false;
+    const stats = window.__renderStats = { crowd: 0, total: 0 };   // for the performance check in the console
     let gazeX = 6.7, gasp = 0, frameDt = 0.016;   // where the crowd is looking, how startled it is, last frame time
     let crowd = [];
 
     function resize() {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, 1.5) * quality;
       W = canvas.clientWidth; H = canvas.clientHeight;
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
       S = Math.min(W / W_WIDTH, H / WORLD_H);
       OX = (W - W_WIDTH * S) / 2 - W_LEFT * S;
       FY = Math.round(H * 0.8);
+      crowdTop = Math.max(0, Math.floor(FY - (TIERS[TIERS.length - 1] + 1.9) * S));
+      crowdH = Math.ceil(FY - 0.85 * S) - crowdTop;
+      crowdLayer.width = Math.round(W * dpr); crowdLayer.height = Math.max(1, Math.round(crowdH * dpr));
+      crowdCtx = crowdLayer.getContext('2d');
+      crowdLast = -1e9;
       buildBackground();
     }
     const sx = (x) => OX + x * S;
@@ -172,7 +186,7 @@ const Renderer = (() => {
       // push the stands back a little so the shuttle and the players stand out against them
       const top = FY - (TIERS[TIERS.length - 1] + 1.4) * S, bottom = FY - 0.9 * S;
       const veil = ctx.createLinearGradient(0, top, 0, bottom);
-      veil.addColorStop(0, 'rgba(10,5,34,0.62)'); veil.addColorStop(1, 'rgba(10,5,34,0.45)');
+      veil.addColorStop(0, 'rgba(10,5,34,0)'); veil.addColorStop(0.3, 'rgba(10,5,34,0.62)'); veil.addColorStop(1, 'rgba(10,5,34,0.45)');
       ctx.fillStyle = veil; ctx.fillRect(0, top, W, bottom - top);
     }
 
@@ -366,18 +380,16 @@ const Renderer = (() => {
 
     // LED advertising boards along the foot of the stands
     function drawBoards() {
+      // a faint LED board at the foot of the stands: just enough to read as a board, never to compete with the game
       const top = FY - 0.92 * S, h = 0.92 * S;
-      const grad = ctx.createLinearGradient(0, top, W, top);
-      grad.addColorStop(0, BRAND_A); grad.addColorStop(1, BRAND_B);
-      ctx.fillStyle = grad; ctx.fillRect(0, top, W, h);
-      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, top + h - 0.12 * S, W, 0.12 * S);
-      ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, top, W, Math.max(1, 0.03 * S));
-      ctx.font = `800 ${0.42 * S}px system-ui, sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-      ctx.fillStyle = 'rgba(255,255,255,0.88)';
+      ctx.fillStyle = 'rgba(80,60,200,0.20)'; ctx.fillRect(0, top, W, h);
+      ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.fillRect(0, top, W, Math.max(1, 0.025 * S));
+      ctx.font = `700 ${0.3 * S}px system-ui, sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(255,255,255,0.10)';
       const label = 'NOCOD.DEV   ·   BADMINTON   ·   ';
       const wLabel = ctx.measureText(label).width;
-      const off = -((time * 0.22 * S) % wLabel);
-      for (let x = off; x < W; x += wLabel) ctx.fillText(label, x, top + h * 0.46);
+      const off = -((time * 0.08 * S) % wLabel);
+      for (let x = off; x < W; x += wLabel) ctx.fillText(label, x, top + h * 0.5);
     }
 
     // while a serve is pending, light up the part of the floor the server may stand on (behind the short service line)
@@ -579,9 +591,18 @@ const Renderer = (() => {
     function reset() { trail.length = 0; particles.length = 0; texts.length = 0; rings.length = 0; shake = 0; flash = 0; confetti = false; }
 
     let last = performance.now();
+    let last0 = performance.now();
     function draw(snap, meta) {
       const now = performance.now();
+      const drawStart = now;
       const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
+      // if frames keep taking too long, draw at a lower resolution (the browser scales it back up)
+      const rawMs = (now - last0) ;
+      last0 = now;
+      if (rawMs < 250) {
+        if (rawMs > 28) { slowFrames++; fastFrames = 0; } else { fastFrames++; if (rawMs < 20) slowFrames = Math.max(0, slowFrames - 1); }
+        if (slowFrames > 45 && quality > 0.5) { quality = Math.max(0.5, quality - 0.17); slowFrames = 0; resize(); }
+      }
       frameDt = dt; gasp = Math.max(0, gasp - dt);
       gazeX += ((snap ? snap.sh[0] : 6.7) - gazeX) * Math.min(1, dt * 10);
       shake = Math.max(0, shake - dt * 2.2); flash = Math.max(0, flash - dt * 1.8);
@@ -591,7 +612,19 @@ const Renderer = (() => {
       ctx.drawImage(bg, 0, 0, W, H);
       ctx.save();
       if (shake > 0) ctx.translate((Math.random() - 0.5) * shake * 14, (Math.random() - 0.5) * shake * 14);
-      drawCrowd();
+      const tc0 = performance.now();
+      if (now - crowdLast > 1000 / CROWD_FPS) {
+        crowdLast = now;
+        ctx = crowdCtx;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, -crowdTop * dpr);
+        ctx.clearRect(0, crowdTop, W, crowdH);
+        drawCrowd();
+        ctx = mainCtx;
+      }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(crowdLayer, 0, Math.round(crowdTop * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      stats.crowd = performance.now() - tc0;
       drawBoards();
       if (snap) {
         const sh = snap.sh;
@@ -652,11 +685,12 @@ const Renderer = (() => {
       ctx.globalAlpha = 1;
       ctx.restore();
       if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash * 0.5})`; ctx.fillRect(0, 0, W, H); }
+      stats.total = performance.now() - drawStart;
     }
 
     window.addEventListener('resize', resize);
     resize();
-    return { draw, onEvents, reset, resize, burst, word };
+    return { draw, onEvents, reset, resize, burst, word, get quality() { return quality; } };
   }
 
   return { create };
