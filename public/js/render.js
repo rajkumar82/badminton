@@ -55,7 +55,8 @@ const Renderer = (() => {
     let crowdTop = 0, crowdH = 0, crowdLast = -1e9;
     // render quality: scale of the canvas backing store. Lowered automatically if the machine cannot keep up.
     let quality = 1, slowFrames = 0, fastFrames = 0;
-    const CROWD_FPS = 14;
+    let lod = 0;                    // 0 full faces, 1 plain faces on the back rows, 2 simple fans everywhere
+    const crowdFps = () => (lod >= 2 ? 6 : lod === 1 ? 10 : 14);
     let W = 0, H = 0, S = 1, OX = 0, FY = 0, dpr = 1;
     let bg = null;
     const trail = [];
@@ -70,6 +71,7 @@ const Renderer = (() => {
 
     function resize() {
       dpr = Math.min(window.devicePixelRatio || 1, 1.5) * quality;
+      lod = quality >= 0.84 ? 0 : quality >= 0.67 ? 1 : 2;
       W = canvas.clientWidth; H = canvas.clientHeight;
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
       S = Math.min(W / W_WIDTH, H / WORLD_H);
@@ -192,7 +194,30 @@ const Renderer = (() => {
 
     const INK = '#190d45';   // comic-book outline colour
 
+    // A fan drawn with a handful of shapes: used on slow machines (and for the back rows when the load is high)
+    function drawFanLite(c, seatY, sc, shade, excite) {
+      const x = sx(c.x);
+      const hop = excite > 0.05 ? Math.abs(Math.sin(time * 9 * c.sp + c.ph)) * excite * 0.2 * sc : 0;
+      const base = seatY - hop;
+      const shirt = mix(c.shirt, '#0f0a30', shade);
+      ctx.fillStyle = shirt;
+      ctx.fillRect(x - 0.24 * sc, base - 0.6 * sc, 0.48 * sc, 0.66 * sc);
+      if (excite > 0.12) {
+        ctx.fillRect(x - 0.34 * sc, base - 1.25 * sc, 0.1 * sc, 0.7 * sc);
+        ctx.fillRect(x + 0.24 * sc, base - 1.25 * sc, 0.1 * sc, 0.7 * sc);
+      }
+      ctx.fillStyle = mix(c.skin, '#0f0a30', shade * 0.8);
+      ctx.beginPath(); ctx.arc(x, base - 0.88 * sc, 0.2 * sc, 0, 6.3); ctx.fill();
+      ctx.fillStyle = mix(c.hair, '#0f0a30', shade * 0.8);
+      ctx.beginPath(); ctx.arc(x, base - 0.92 * sc, 0.2 * sc, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#190d45';
+      const look = Math.max(-1, Math.min(1, (gazeX - c.x) / 4.5)) * 0.05 * sc;
+      ctx.fillRect(x - 0.09 * sc + look, base - 0.9 * sc, 0.04 * sc, 0.05 * sc);
+      ctx.fillRect(x + 0.05 * sc + look, base - 0.9 * sc, 0.04 * sc, 0.05 * sc);
+    }
+
     function drawFan(c, seatY, sc, shade, excite) {
+      if (lod >= 2 || (lod === 1 && c.row >= 2)) { drawFanLite(c, seatY, sc, shade, excite); return; }
       // heads follow the shuttle: each fan turns a little behind the others, so a rally ripples across the stands
       const want = Math.max(-1, Math.min(1, (gazeX - c.x) / 4.5)) * 0.95 + Math.sin(time * 0.5 * c.sp + c.ph) * 0.12 * c.look;
       c.turn += (want - c.turn) * Math.min(1, frameDt * (2.5 + c.sp * 3.5));
@@ -613,7 +638,7 @@ const Renderer = (() => {
       ctx.save();
       if (shake > 0) ctx.translate((Math.random() - 0.5) * shake * 14, (Math.random() - 0.5) * shake * 14);
       const tc0 = performance.now();
-      if (now - crowdLast > 1000 / CROWD_FPS) {
+      if (now - crowdLast > 1000 / crowdFps()) {
         crowdLast = now;
         ctx = crowdCtx;
         ctx.setTransform(dpr, 0, 0, dpr, 0, -crowdTop * dpr);
@@ -690,6 +715,8 @@ const Renderer = (() => {
 
     window.addEventListener('resize', resize);
     resize();
+    // very large canvases start at a lower resolution; the adaptive logic can still raise or lower it
+    if (W * H * dpr * dpr > 3.2e6) { quality = 0.75; resize(); }
     return { draw, onEvents, reset, resize, burst, word, get quality() { return quality; } };
   }
 
