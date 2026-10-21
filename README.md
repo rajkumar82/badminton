@@ -72,3 +72,9 @@ Rooms live in the memory of one server process, so the Cloud Run service must ru
 (`--max-instances=1`) or two players could land on different instances. WebSockets work on Cloud Run; the nocod.dev
 Worker has to pass the upgrade request through unchanged. See `shared/README.md` and the root `CLAUDE.md` for the
 `summary` and home page steps to do after the first deploy.
+
+## Credits
+
+- The stands use a photo of a seated crowd by Aksh yadav from [Unsplash](https://unsplash.com/photos/crowd-of-people-sitting-on-stadium-seats-bY4cqxp7vos)
+  (Unsplash License, free to use), saved as `public/crowd.jpg` (1600 px wide) and tinted purple in `render.js`. The
+  front row of fans in front of it is drawn in code.

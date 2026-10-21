@@ -48,6 +48,11 @@ const Renderer = (() => {
 
   function create(canvas) {
     const mainCtx = canvas.getContext('2d', { alpha: false });
+    // a real photo of a seated crowd is the stands; only the front row of fans is animated on top of it
+    const crowdImg = new Image();
+    let hasPhoto = false;
+    crowdImg.onload = () => { hasPhoto = true; buildBackground(); crowdLast = -1e9; };
+    crowdImg.src = '/crowd.jpg';
     let ctx = mainCtx;
     // the crowd is drawn into its own small layer a few times a second and then blitted: the stands change slowly
     const crowdLayer = document.createElement('canvas');
@@ -107,6 +112,25 @@ const Renderer = (() => {
         const c = ['196,181,253', '125,160,255', '244,114,182', '255,255,255'][i % 4];
         g.fillStyle = `rgba(${c},${0.05 + Math.random() * 0.08})`;
         g.beginPath(); g.arc(x, y, r, 0, 6.3); g.fill();
+      }
+      // the photo of the crowd: the seated spectators along the bottom of the picture, tinted purple and faded into the wall
+      if (hasPhoto) {
+        const bandTop = FY - 4.4 * S, bandH = 3.5 * S;
+        const tw = Math.max(1, Math.round(W * dpr)), th = Math.max(1, Math.round(bandH * dpr));
+        const tmp = document.createElement('canvas'); tmp.width = tw; tmp.height = th;
+        const tg = tmp.getContext('2d');
+        tg.drawImage(crowdImg, 0, 690, crowdImg.naturalWidth, crowdImg.naturalHeight - 690, 0, 0, tw, th);
+        tg.globalCompositeOperation = 'multiply'; tg.fillStyle = '#7a52e8'; tg.fillRect(0, 0, tw, th);   // into the purple theme
+        tg.globalCompositeOperation = 'source-over';
+        const dark = tg.createLinearGradient(0, 0, 0, th);
+        dark.addColorStop(0, 'rgba(14,8,44,0.30)'); dark.addColorStop(1, 'rgba(14,8,44,0.5)');
+        tg.fillStyle = dark; tg.fillRect(0, 0, tw, th);
+        // fade the top edge into the wall behind, so there is no visible line
+        tg.globalCompositeOperation = 'destination-in';
+        const mask = tg.createLinearGradient(0, 0, 0, th);
+        mask.addColorStop(0, 'rgba(0,0,0,0)'); mask.addColorStop(0.35, 'rgba(0,0,0,1)'); mask.addColorStop(1, 'rgba(0,0,0,1)');
+        tg.fillStyle = mask; tg.fillRect(0, 0, tw, th);
+        g.drawImage(tmp, 0, bandTop, W, bandH);
       }
       // ceiling lights and their beams
       for (let i = 0; i < 5; i++) {
@@ -170,6 +194,7 @@ const Renderer = (() => {
       const excite = Math.max(0, Math.min(1, crowdJump / 1.1));
       let idx = 0;
       for (let row = TIERS.length - 1; row >= 0; row--) {
+        if (hasPhoto && row > 0) { while (idx < crowd.length && crowd[idx].row === row) idx++; continue; }
         const topY = FY - TIERS[row] * S;
         const depth = row / (TIERS.length - 1);
         // the step the row sits on
@@ -179,12 +204,13 @@ const Renderer = (() => {
         ctx.fillStyle = 'rgba(255,255,255,0.10)';
         ctx.fillRect(0, topY, W, Math.max(1, 0.03 * S));
         const sc = TIER_SCALE[row] * S;
-        const shade = 0.42 + depth * 0.3;
+        const shade = hasPhoto ? 0.55 : 0.42 + depth * 0.3;     // in front of the photo the fans are dim silhouettes
         while (idx < crowd.length && crowd[idx].row === row) {
           drawFan(crowd[idx], topY, sc, shade, excite);
           idx++;
         }
       }
+      if (hasPhoto) return;
       // push the stands back a little so the shuttle and the players stand out against them
       const top = FY - (TIERS[TIERS.length - 1] + 1.4) * S, bottom = FY - 0.9 * S;
       const veil = ctx.createLinearGradient(0, top, 0, bottom);
