@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Badminton – Free Online 2-Player Game with Real Shuttlecock Physics | nocod.dev</title>
+  <!-- seo:start -->
+  <meta name="description" content="Play badminton online with a friend: share a link, rally with realistic shuttlecock physics, first to 15 wins. Or play the computer. Free, no sign-up.">
+  <link rel="canonical" href="https://badminton.nocod.dev/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="nocod.dev">
+  <meta property="og:title" content="Badminton – Free Online 2-Player Game with Real Shuttlecock Physics | nocod.dev">
+  <meta property="og:description" content="Play badminton online with a friend: share a link, rally with realistic shuttlecock physics, first to 15 wins. Or play the computer. Free, no sign-up.">
+  <meta property="og:url" content="https://badminton.nocod.dev/">
+  <meta property="og:image" content="https://badminton.nocod.dev/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Badminton – Free Online 2-Player Game with Real Shuttlecock Physics | nocod.dev">
+  <meta name="twitter:description" content="Play badminton online with a friend: share a link, rally with realistic shuttlecock physics, first to 15 wins. Or play the computer. Free, no sign-up.">
+  <meta name="twitter:image" content="https://badminton.nocod.dev/og-image.png">
+  <!-- seo:end -->
+  <meta name="theme-color" content="#10142b">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Badminton">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10142b;
+      --card: #1b2145;
+      --card2: #262e5c;
+      --text: #eef1ff;
+      --muted: #9aa5d6;
+      --accent: #4ade80;
+      --blue: #3b82f6;
+      --orange: #f97316;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    [hidden] { display: none !important; }
+
+    /* scoreboard */
+    #hud { position: fixed; top: 10px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+    #sb { display: flex; align-items: stretch; background: rgba(10, 13, 34, 0.78); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; overflow: hidden; backdrop-filter: blur(6px); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4); }
+    .side { display: flex; align-items: center; gap: 12px; padding: 8px 18px; min-width: 190px; }
+    #side0 { border-top: 4px solid var(--blue); flex-direction: row; }
+    #side1 { border-top: 4px solid var(--orange); flex-direction: row-reverse; text-align: right; }
+    .side .who { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .side .name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+    .side .tag { font-size: 11px; color: var(--muted); height: 14px; display: flex; align-items: center; gap: 5px; }
+    #side1 .tag { justify-content: flex-end; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: transparent; box-shadow: none; transition: background 0.2s; }
+    .dot.on { background: #fde047; box-shadow: 0 0 10px #fde047; }
+    .me .name::after { content: ' (you)'; font-weight: 500; color: var(--muted); font-size: 12px; }
+    .score { font-size: 44px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; min-width: 1.4ch; text-align: center; }
+    .score.pop { animation: pop 0.45s ease-out; }
+    @keyframes pop { 0% { transform: scale(1.7); color: #fde047; } 100% { transform: scale(1); } }
+    .mid { display: flex; align-items: center; justify-content: center; padding: 0 10px; background: rgba(255, 255, 255, 0.06); color: var(--muted); font-size: 11px; text-align: center; line-height: 1.3; }
+    #gp { background: #fde047; color: #1f2937; font-weight: 800; font-size: 13px; letter-spacing: 0.06em; padding: 4px 14px; border-radius: 999px; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0.55; } }
+    #watchers { font-size: 12px; color: var(--muted); background: rgba(10, 13, 34, 0.6); padding: 3px 12px; border-radius: 999px; }
+
+    #banner { position: fixed; left: 0; right: 0; top: 34%; text-align: center; font-size: clamp(30px, 6vw, 64px); font-weight: 900; text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6); pointer-events: none; animation: rise 0.4s ease-out; }
+    @keyframes rise { from { transform: translateY(14px) scale(0.9); opacity: 0; } }
+    #sub { position: fixed; left: 0; right: 0; bottom: 74px; text-align: center; font-size: 20px; font-weight: 700; pointer-events: none; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8); }
+    #sub span { background: rgba(10, 13, 34, 0.7); padding: 8px 18px; border-radius: 999px; }
+    #help { position: fixed; left: 0; right: 0; bottom: 12px; text-align: center; font-size: 13px; color: rgba(238, 241, 255, 0.75); pointer-events: none; }
+    #help kbd { background: rgba(255, 255, 255, 0.14); border-radius: 5px; padding: 1px 7px; font-family: inherit; font-weight: 700; margin: 0 2px; }
+    .corner { position: fixed; top: 10px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.18); background: rgba(10, 13, 34, 0.7); color: var(--text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+    #mute { right: 62px; }
+    #menuBtn { left: 10px; }
+
+    /* panels */
+    #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(8, 10, 26, 0.55); backdrop-filter: blur(3px); overflow: auto; }
+    #overlay.hidden { display: none; }
+    .card { width: min(460px, 100%); background: linear-gradient(160deg, var(--card), #141836); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 22px; padding: 26px 26px 22px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55); }
+    .card h1 { margin: 0 0 4px; font-size: 34px; letter-spacing: -0.02em; }
+    .card h2 { margin: 0 0 6px; font-size: 26px; }
+    .card p { margin: 0 0 14px; color: var(--muted); line-height: 1.45; }
+    label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+    input, select { width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--card2); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; padding: 11px 13px; outline: none; }
+    input:focus, select:focus { border-color: var(--accent); }
+    button { font: inherit; font-weight: 700; font-size: 16px; color: #06260f; background: var(--accent); border: 0; border-radius: 12px; padding: 12px 18px; cursor: pointer; }
+    button:hover { filter: brightness(1.08); }
+    button:disabled { opacity: 0.5; cursor: default; }
+    button.secondary { background: var(--card2); color: var(--text); border: 1px solid rgba(255, 255, 255, 0.14); }
+    .stack { display: grid; gap: 10px; margin-top: 14px; }
+    .row { display: flex; gap: 8px; }
+    .row select { flex: 0 0 120px; }
+    .row button { flex: 1; }
+    .err { color: #fca5a5; font-size: 13px; margin: 6px 0 0; }
+    .note { background: rgba(74, 222, 128, 0.12); border: 1px solid rgba(74, 222, 128, 0.35); color: #d1fae5 !important; border-radius: 12px; padding: 10px 12px; margin-top: 12px !important; }
+    .how { font-size: 13px; margin: 16px 0 0 !important; line-height: 1.7 !important; }
+    .how kbd { background: var(--card2); border-radius: 5px; padding: 1px 7px; color: var(--text); font-family: inherit; font-weight: 700; }
+    .spinner { width: 22px; height: 22px; border: 3px solid rgba(255, 255, 255, 0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #msgButtons { display: grid; gap: 10px; margin-top: 18px; }
+    @media (max-width: 640px) { .side { min-width: 0; padding: 6px 10px; gap: 8px; } .score { font-size: 32px; } .side .name { max-width: 90px; font-size: 13px; } #help { font-size: 11px; } }
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+
+  <div id="hud" hidden>
+    <div id="sb">
+      <div class="side" id="side0"><div class="score" id="s0"></div><div class="who"><span class="name" id="n0"></span><span class="tag"><span class="dot" id="d0"></span></span></div></div>
+      <div class="mid">first<br>to 15</div>
+      <div class="side" id="side1"><div class="score" id="s1"></div><div class="who"><span class="name" id="n1"></span><span class="tag"><span class="dot" id="d1"></span></span></div></div>
+    </div>
+    <div id="gp" hidden></div>
+    <div id="watchers" hidden></div>
+  </div>
+  <div id="banner" hidden></div>
+  <div id="sub" hidden></div>
+  <div id="help"><kbd>A</kbd><kbd>D</kbd> move &nbsp; <kbd>W</kbd> jump &nbsp; <kbd>Space</kbd> hit &nbsp; <kbd>S</kbd>+<kbd>Space</kbd> drop shot &nbsp; jump + hit high = smash</div>
+  <button class="corner" id="menuBtn" title="Leave game" aria-label="Leave game">✕</button>
+  <button class="corner" id="mute" title="Sound on/off" aria-label="Sound on or off">🔊</button>
+
+  <div id="overlay">
+    <div class="card" id="pMenu">
+      <h1>🏸 Badminton</h1>
+      <p>Rally with real shuttlecock physics. First to 15 wins, and at 14-14 you must win by two.</p>
+      <label for="name">Your name</label>
+      <input id="name" maxlength="14" autocomplete="nickname" placeholder="Enter your name" autofocus>
+      <div class="err" id="nameErr" hidden>Please enter a name first.</div>
+      <p class="note" id="joinNote" hidden>You were invited to game <b id="joinCode"></b>. If a seat is free you play, otherwise you can watch.</p>
+      <div class="stack">
+        <button id="btnJoin" hidden>Join the game</button>
+        <button id="btnCreate">Start an online game</button>
+        <div class="row">
+          <select id="level" aria-label="Computer level"><option value="0">Easy</option><option value="1" selected>Medium</option><option value="2">Hard</option></select>
+          <button class="secondary" id="btnCpu">Play the computer</button>
+        </div>
+      </div>
+      <p class="how"><kbd>A</kbd> <kbd>D</kbd> or arrows to move · <kbd>W</kbd> jump · <kbd>Space</kbd> hit.<br>Hold <kbd>S</kbd> for a drop shot, hold forward for a flat drive, and jump to smash high shuttles.<br>Start an online game, send the link to a friend, and everyone else who opens it can watch.</p>
+    </div>
+
+    <div class="card" id="pWait" hidden>
+      <h2><span class="spinner"></span>Waiting for player 2</h2>
+      <p>Send this link to your opponent. The game starts as soon as they open it. Anyone who opens it after that watches.</p>
+      <input id="shareLink" readonly aria-label="Game link">
+      <div class="stack">
+        <button id="btnCopy">Copy link</button>
+        <button class="secondary" id="btnShare" hidden>Share…</button>
+        <button class="secondary" id="btnCancel">Cancel</button>
+      </div>
+    </div>
+
+    <div class="card" id="pMsg" hidden>
+      <h2 id="msgTitle"></h2>
+      <p id="msgText"></p>
+      <div id="msgButtons"></div>
+    </div>
+  </div>
+
+  <script src="/js/sim.js"></script>
+  <script src="/js/ai.js"></script>
+  <script src="/js/audio.js"></script>
+  <script src="/js/render.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/install.js" defer></script>
+</body>
+</html>
