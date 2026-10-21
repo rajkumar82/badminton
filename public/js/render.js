@@ -134,16 +134,19 @@ const Renderer = (() => {
       for (const x of lines) { g.beginPath(); g.moveTo(sx(x), FY); g.lineTo(sx(x) + (sx(x) - W / 2) * 0.12, yb); g.stroke(); }
       g.beginPath(); g.moveTo(sx(0), FY + 1); g.lineTo(sx(COURT_W), FY + 1); g.stroke();
       g.beginPath(); g.moveTo(sx(0) + (sx(0) - W / 2) * 0.12, yb); g.lineTo(sx(COURT_W) + (sx(COURT_W) - W / 2) * 0.12, yb); g.stroke();
+    }
 
-      // the fans: laid out once, animated live in drawCrowd. Nothing here is regular: every fan has their own size,
-      // seat height and spacing, some seats are empty and some friends sit in clusters.
+    // A new random crowd for every game (not on every resize, or the fans would jump around mid-rally).
+    function layoutCrowd() {
+      // Nothing here is regular: every fan has their own size, seat height and spacing, some seats are empty and some
+      // friends sit in clusters.
       crowd = [];
       const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
       for (let row = TIERS.length - 1; row >= 0; row--) {
         let x = -1.9 + Math.random() * 0.8;
         while (x < 15.4) {
           const size = TIER_SCALE[row] * (0.74 + Math.random() * 0.56);
-          if (Math.random() < 0.82) {
+          if (Math.random() < 0.66) {
             const r = Math.random();
             crowd.push({
               x, row, size, drop: (Math.random() - 0.5) * 0.3, dim: Math.random() * 0.2,
@@ -618,7 +621,7 @@ const Renderer = (() => {
       }
     }
 
-    function reset() { trail.length = 0; particles.length = 0; texts.length = 0; rings.length = 0; shake = 0; flash = 0; confetti = false; }
+    function reset() { layoutCrowd(); crowdLast = -1e9; trail.length = 0; particles.length = 0; texts.length = 0; rings.length = 0; shake = 0; flash = 0; confetti = false; }
 
     let last = performance.now();
     let last0 = performance.now();
@@ -718,6 +721,7 @@ const Renderer = (() => {
       stats.total = performance.now() - drawStart;
     }
 
+    layoutCrowd();
     window.addEventListener('resize', resize);
     resize();
     // very large canvases start at a lower resolution; the adaptive logic can still raise or lower it
