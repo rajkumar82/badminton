@@ -76,9 +76,17 @@ move up to the net and play the serve at once.
 Open the page in two browser windows to try online play on one machine. `GET /api/stats` shows how many games are
 running.
 
-## Deploying (not done yet)
+## Deploying
 
-Rooms live in the memory of one server process, so the Cloud Run service must run a single instance
-(`--max-instances=1`) or two players could land on different instances. WebSockets work on Cloud Run; the nocod.dev
-Worker has to pass the upgrade request through unchanged. See `shared/README.md` and the root `CLAUDE.md` for the
-`summary` and home page steps to do after the first deploy.
+Live at https://badminton.nocod.dev (Cloud Run service `badminton` in project `nocode-512210`, `asia-south1`, routed by
+the Cloudflare Worker in `nocode/worker`).
+
+    gcloud run deploy badminton --source . --project=nocode-512210 --region=asia-south1 --allow-unauthenticated       --max-instances=1 --min-instances=0 --concurrency=1000 --timeout=3600 --memory=512Mi --cpu=1
+
+- **One instance only.** Rooms live in the memory of one server process, so the service must run a single instance
+  (`--max-instances=1`) or two players could land on different instances. When it scales to zero (no connections) there
+  are no games to lose; a cold start takes a few seconds, which the browser's one-minute connection retry covers.
+- **WebSockets** work on Cloud Run and through the Worker unchanged. `--timeout=3600` is the longest a connection
+  can stay open; the browser reconnects and takes its seat back if one is cut.
+- Run a deploy on its own: starting a second `gcloud run deploy` for a service that is still being created gives a
+  "resource already exists" conflict.
