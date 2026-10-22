@@ -753,10 +753,10 @@ const Renderer = (() => {
       ctx.save();
       ctx.translate(sx(x), sy(y));
       ctx.rotate(-ang);
-      const k = S * 1.4;
+      const k = S * 0.8;                                  // about 0.3 m long: a real one is 9 cm, but the racket and players are drawn larger than life too
       const X0 = 0.07, X1 = 0.33;                         // skirt starts and ends this far behind the cork centre
-      const hw = (d) => 0.046 + (d - X0) / (X1 - X0) * 0.07 + Math.sin((d - X0) / (X1 - X0) * Math.PI) * 0.008;   // half width: narrow at the cork, slightly bowed
-      const px = Math.max(1, 0.0075 * k);                 // thin lines
+      const hw = (d) => 0.05 + (d - X0) / (X1 - X0) * 0.098 + Math.sin((d - X0) / (X1 - X0) * Math.PI) * 0.012;   // half width: narrow at the cork, slightly bowed
+      const px = Math.max(0.9, 0.0075 * k);                 // thin lines
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       // faint veil so the skirt reads as a solid cone against a busy background
       ctx.fillStyle = 'rgba(255,255,255,0.16)';
@@ -765,20 +765,20 @@ const Renderer = (() => {
       const rings = [X0, 0.135, 0.2, 0.265, X1];
       ctx.strokeStyle = 'rgba(210,222,245,0.75)'; ctx.lineWidth = px;
       for (const d of rings) { ctx.beginPath(); ctx.ellipse(-d * k, 0, 0.016 * k, hw(d) * k, 0, -Math.PI / 2, Math.PI / 2, true); ctx.stroke(); }
-      ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = Math.max(1.1, 0.009 * k);
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = Math.max(0.9, 0.009 * k);
       ctx.beginPath();
       for (const f of [-1, -0.87, -0.5, 0, 0.5, 0.87, 1]) { ctx.moveTo(-X0 * k, f * hw(X0) * k); ctx.lineTo(-X1 * k, f * hw(X1) * k); }
       ctx.stroke();
       ctx.strokeStyle = 'rgba(255,255,255,0.98)'; ctx.lineWidth = Math.max(1.1, 0.009 * k);
       for (const d of rings) { ctx.beginPath(); ctx.ellipse(-d * k, 0, 0.016 * k, hw(d) * k, 0, Math.PI / 2, Math.PI * 1.5, true); ctx.stroke(); }
       // the rim is a heavier ring
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.6, 0.016 * k);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.3, 0.016 * k);
       ctx.beginPath(); ctx.ellipse(-X1 * k, 0, 0.016 * k, hw(X1) * k, 0, 0, 6.3); ctx.stroke();
       // cork base: a rounded dome with a thin collar where the skirt is fixed
       const cg = ctx.createRadialGradient(0.012 * k, -0.02 * k, 0.004 * k, 0.0, 0, 0.075 * k);
       cg.addColorStop(0, '#fff6df'); cg.addColorStop(0.55, '#ecc983'); cg.addColorStop(1, '#b9873a');
       ctx.fillStyle = cg;
-      ctx.beginPath(); ctx.moveTo(-0.075 * k, -0.047 * k); ctx.quadraticCurveTo(0.035 * k, -0.075 * k, 0.062 * k, 0); ctx.quadraticCurveTo(0.035 * k, 0.075 * k, -0.075 * k, 0.047 * k); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-0.075 * k, -0.052 * k); ctx.quadraticCurveTo(0.04 * k, -0.085 * k, 0.07 * k, 0); ctx.quadraticCurveTo(0.04 * k, 0.085 * k, -0.075 * k, 0.052 * k); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(110,70,20,0.55)'; ctx.lineWidth = Math.max(0.7, 0.006 * k); ctx.stroke();
       ctx.fillStyle = '#f8fafc'; ctx.fillRect(-0.085 * k, -0.05 * k, 0.018 * k, 0.1 * k);   // collar
       ctx.restore();
