@@ -113,8 +113,25 @@
     .row button { flex: 1; }
     .err { color: #fca5a5; font-size: 13px; margin: 6px 0 0; }
     .note { background: rgba(167, 139, 250, 0.14); border: 1px solid rgba(167, 139, 250, 0.4); color: #ede9fe !important; border-radius: 12px; padding: 10px 12px; margin-top: 12px !important; }
-    .how { font-size: 13px; margin: 16px 0 0 !important; line-height: 1.7 !important; }
-    .how kbd { background: var(--card2); border-radius: 5px; padding: 1px 7px; color: var(--text); font-family: inherit; font-weight: 700; }
+    /* start menu */
+    .hero { text-align: center; }
+    .hero .logo { width: 64px; height: 64px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45)); }
+    .hero h1 { margin: 0; }
+    .hero .tag { margin: 4px 0 0; }
+
+    /* arcade look: glowing title, big buttons straight onto the court */
+    #overlay.onmenu { background: radial-gradient(ellipse at center, rgba(10, 6, 32, 0.62), rgba(10, 6, 32, 0.28) 75%); }
+    #pMenu { width: min(340px, 100%); background: none; border: 0; box-shadow: none; padding: 0; }
+    .hero .logo { width: 84px; height: 84px; filter: drop-shadow(0 0 18px rgba(124, 77, 255, 0.9)); animation: bob 2.4s ease-in-out infinite; }
+    @keyframes bob { 50% { transform: translateY(-6px) rotate(4deg); } }
+    .hero h1 { font-size: 46px; font-weight: 900; font-style: italic; text-transform: uppercase; letter-spacing: 0.02em; background: linear-gradient(100deg, #7dd3fc, #c4b5fd 45%, #fda4af); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 14px rgba(125, 140, 255, 0.65)); }
+    .hero .tag { color: #e4dcff; letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; font-weight: 700; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8); margin-bottom: 14px; }
+    #nameRow, label { text-align: center; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9); }
+    #nameBox input, select { background: rgba(14, 8, 40, 0.8); }
+    .stack button, .stack select { border-radius: 999px; padding-top: 14px; padding-bottom: 14px; }
+    #btnCreate { font-size: 18px; box-shadow: 0 0 26px rgba(124, 77, 255, 0.7); animation: glow 2s ease-in-out infinite; }
+    @keyframes glow { 50% { box-shadow: 0 0 40px rgba(124, 77, 255, 1); } }
+    .stack .secondary { background: rgba(14, 8, 40, 0.8); border-color: rgba(196, 181, 253, 0.55); }
     .spinner { width: 22px; height: 22px; border: 3px solid rgba(255, 255, 255, 0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #msgButtons { display: grid; gap: 10px; margin-top: 18px; }
@@ -141,24 +158,37 @@
 
   <div id="overlay">
     <div class="card" id="pMenu">
-      <h1>🏸 Badminton</h1>
-      <p>Rally with real shuttlecock physics. First to 15 wins, and at 14-14 you must win by two.</p>
-      <div id="nameRow" hidden>Playing as <b id="nameShown"></b> <button class="link" id="btnChange" type="button">change</button></div>
-      <div id="nameBox">
-        <label for="name">Your name</label>
-        <input id="name" maxlength="14" autocomplete="nickname" placeholder="Enter your name" autofocus>
-        <div class="err" id="nameErr" hidden>Please enter a name first.</div>
+      <div class="hero">
+        <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><defs>
+          <linearGradient id="lgSkirt" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e9e4ff"/><stop offset=".5" stop-color="#fff"/><stop offset="1" stop-color="#cfc6ff"/></linearGradient>
+          <radialGradient id="lgCork" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffe9b8"/><stop offset="1" stop-color="#f0a53a"/></radialGradient></defs>
+          <g transform="rotate(-38 32 32)">
+            <path d="M22 44 L9 8 Q32 -1 55 8 L42 44 Z" fill="url(#lgSkirt)"/>
+            <path d="M22 44 L9 8 M27 44 L21 5 M32 44 L32 3 M37 44 L43 5 M42 44 L55 8" stroke="#8b7be0" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+            <path d="M13 22 Q32 28 51 22" stroke="#4361ee" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <ellipse cx="32" cy="50" rx="11" ry="9" fill="url(#lgCork)"/>
+            <ellipse cx="29" cy="47" rx="4" ry="2.6" fill="#fff" opacity=".45"/>
+          </g></svg>
+        <h1>Badminton</h1>
+        <p class="tag">Serve. Rally. Smash.</p>
       </div>
-      <p class="note" id="joinNote" hidden>You were invited to game <b id="joinCode"></b>. If a seat is free you play, otherwise you can watch.</p>
-      <div class="stack">
-        <button id="btnJoin" hidden>Join the game</button>
-        <button id="btnCreate">Start an online game</button>
-        <div class="row">
-          <select id="level" aria-label="Computer level"><option value="0">Easy</option><option value="1" selected>Medium</option><option value="2">Hard</option></select>
-          <button class="secondary" id="btnCpu">Play the computer</button>
+      <div class="ctl">
+        <div id="nameRow" hidden>Playing as <b id="nameShown"></b> <button class="link" id="btnChange" type="button">change</button></div>
+        <div id="nameBox">
+          <label for="name">Your name</label>
+          <input id="name" maxlength="14" autocomplete="nickname" placeholder="Enter your name" autofocus>
+          <div class="err" id="nameErr" hidden>Please enter a name first.</div>
+        </div>
+        <p class="note" id="joinNote" hidden>You were invited to game <b id="joinCode"></b>. If a seat is free you play, otherwise you can watch.</p>
+        <div class="stack">
+          <button id="btnJoin" hidden>Join the game</button>
+          <button id="btnCreate">Start an online game</button>
+          <div class="row">
+            <select id="level" aria-label="Computer level"><option value="0">Easy</option><option value="1" selected>Medium</option><option value="2">Hard</option></select>
+            <button class="secondary" id="btnCpu">Play the computer</button>
+          </div>
         </div>
       </div>
-      <p class="how"><kbd>←</kbd> <kbd>→</kbd> move · <kbd>↑</kbd> jump · <kbd>Space</kbd> swing.<br>Hold a key with <kbd>Space</kbd>: <kbd>S</kbd> smash, <kbd>D</kbd> drop shot, <kbd>A</kbd> normal return. Hold the forward arrow for a flat drive.<br>Serving: <kbd>↑</kbd> <kbd>↓</kbd> pick near, mid or far (a marker shows where it lands), hold <kbd>S</kbd> for a flat fast serve or <kbd>D</kbd> for a high lob, then <kbd>Space</kbd>.<br>Start an online game, send the link to a friend, and everyone else who opens it can watch.</p>
     </div>
 
     <div class="card" id="pWait" hidden>

@@ -27,6 +27,8 @@
   // ---------- panels ----------
   function show(panel) {
     $('overlay').classList.toggle('hidden', !panel);
+    $('overlay').classList.toggle('onmenu', panel === 'pMenu');
+    $('help').style.visibility = panel === 'pMenu' ? 'hidden' : '';
     for (const id of ['pMenu', 'pWait', 'pMsg']) $(id).hidden = id !== panel;
   }
 
@@ -404,19 +406,33 @@
     else if (mode === 'online') view = interpolated();
     if (view) updateHud(view);
     const simMs = performance.now() - frameStart;
-    renderer.draw(mode === 'menu' || mode === 'connecting' ? idleScene(now) : view, { names, seat });
+    if (mode === 'menu' || mode === 'connecting') renderer.draw(demoScene(dt), { names: DEMO_NAMES, seat: -1 });
+    else renderer.draw(view, { names, seat });
     if (window.__renderStats) window.__renderStats.sim = simMs;
     requestAnimationFrame(frame);
   }
 
-  // a calm scene behind the menu: the shuttle bobbing above the net
-  function idleScene(now) {
-    const t = now / 1000;
-    return {
-      ph: 'serve', sc: [0, 0], sv: 0, w: -1, gp: -1, lh: -1,
-      p: [[3.2 + Math.sin(t * 0.6) * 0.6, 0, 0, 0, -1, 'clear'], [10.2 - Math.sin(t * 0.5) * 0.6, 0, 0, 0, -1, 'clear']],
-      sh: [6.7 + Math.sin(t * 0.9) * 0.5, 3.3 + Math.sin(t * 1.7) * 0.3, 0, 0, 0.9 + Math.sin(t) * 0.2],
-    };
+  // behind the menu: two computer players rally for real (silent), and start over when a game ends
+  const DEMO_NAMES = ['Aria', 'Kai'];
+  let demo = null, demoAcc = 0, demoPause = 0;
+  function demoScene(dt) {
+    if (!demo) { demo = { game: new Sim.Game(), bots: [new AI.Bot(0, 2), new AI.Bot(1, 2)] }; demoAcc = 0; demoPause = 0; }
+    const g = demo.game;
+    if (g.phase === 'over') {
+      demoPause += dt;
+      if (demoPause > 2.5) { g.reset(g.winner < 0 ? 0 : g.winner); demoPause = 0; }
+    } else {
+      demoAcc += dt;
+      while (demoAcc >= DT) {
+        g.setInput(0, demo.bots[0].update(g, DT));
+        g.setInput(1, demo.bots[1].update(g, DT));
+        g.step();
+        demoAcc -= DT;
+      }
+    }
+    const v = g.snapshot();
+    if (v.ev && v.ev.length) renderer.onEvents(v.ev, { shuttleX: v.sh[0] });
+    return v;
   }
 
   // ---------- wiring ----------
