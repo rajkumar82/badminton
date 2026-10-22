@@ -5,8 +5,8 @@ const Renderer = (() => {
   const COURT_W = 13.4, NET_X = 6.7, NET_H = 1.55;
   const SWING_TIME = 0.34;
   const COLORS = [
-    { main: '#38bdf8', dark: '#0369a1', band: '#fde047' },
-    { main: '#fb923c', dark: '#c2410c', band: '#f8fafc' },
+    { main: '#00d0ff', dark: '#0090d0', band: '#fde047' },
+    { main: '#ff7a00', dark: '#d45500', band: '#f8fafc' },
   ];
   const BRAND_A = '#4361ee', BRAND_B = '#7c4dff';   // the nocod.dev gradient
   // seat height (m above the floor) of each tier of the stands, front row first
