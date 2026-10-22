@@ -13,7 +13,8 @@ real drag, and synthesised sounds. Play a friend online or play the computer.
 
 Rally scoring: every rally is a point. The winner of a point serves next. First to 15 wins, but once it is 14-14 the
 game goes on until someone leads by two. A shot that lands in the opponent's half scores for the hitter; one that
-hits the net, lands on the hitter's own side or lands out scores for the opponent. A player may not hit the shuttle
+hits the net, lands on the hitter's own side or lands out scores for the opponent. A serve that lands short of the
+short service line (between the net and that line) is a fault and also scores for the opponent. A player may not hit the shuttle
 twice in a row (the server cannot hit their own serve), and may step up to one metre behind the back line.
 
 ## Controls
@@ -22,11 +23,13 @@ twice in a row (the server cannot hit their own serve), and may step up to one m
 | --- | --- |
 | left / right arrows | move |
 | up arrow (or `W`) | jump |
-| `Space` | swing (also serves) |
-| `S` + `Space` | smash (needs a shuttle above head height, jumping makes it harder to defend) |
-| `D` + `Space` | drop shot |
-| `A` + `Space` | normal return (clear, or a lift when the shuttle is low) |
+| `Space` | hit (also serves). The game picks the shot: a low shuttle is lifted, one hit high above your feet (jump for it) is smashed, anything else is a clear |
+| down arrow + `Space` | drop shot, just over the net |
 | forward arrow + `Space` | flat drive |
+| `S` / `D` / `A` + `Space` | optional: force a smash, a drop or a clear |
+
+A smash shows a red spot on the floor where it will land. A shuttle coming steeply down at you gets extra reach and a
+longer hit window, so a smash can be dug out if you get close.
 
 **Serving:** before you serve, tap the up or down arrow to choose how far it lands (near, mid or far). Three spots light
 up on the opponent's half of the floor, the chosen one glows, and a dotted arc previews the flight. Hold `S` with

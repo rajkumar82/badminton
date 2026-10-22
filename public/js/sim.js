@@ -10,7 +10,7 @@
   const NET_H = 1.55;
   const BACK_ROOM = 1.0;         // how far behind the back line a player may stand
   const SMASH_CLEARANCE = 0.7;   // a smash is aimed this far above the net tape
-  const AIM_DIST = [1.6, 3.4, 5.4];      // where a serve lands, metres past the net: near, mid, far
+  const AIM_DIST = [2.6, 3.6, 5.4];      // where a serve lands, metres past the net: near, mid, far
   const SERVE_ANGLES = [                  // launch angles tried (flattest first) for a low, normal and high serve
     [26, 30, 34, 38, 42, 46],
     [40, 44, 48, 52, 56, 60],
@@ -31,6 +31,9 @@
   const HIT_TO = 0.27;
   const SWING_COOLDOWN = 0.12;
   const REACH = 1.2;            // radius of the racket's hitting zone
+  const DEFEND_SPEED = 8;       // a shuttle coming steeply down at you this fast (a smash) is defended: bigger reach, longer hit window
+  const DEFEND_REACH = 1.7;
+  const SMASH_FROM = 2.0;       // contact this far above the feet (a jump, or a high reach) is smashed on its own
   const POINT_PAUSE = 1.6;
   const WIN_SCORE = 15;
   const WIN_BY = 2;
@@ -40,7 +43,7 @@
     clear: { speed: 24, angle: 52 },
     drive: { speed: 23, angle: 8 },
     drop: { speed: 8.5, angle: 26 },
-    smash: { speed: 35, angle: -21 },
+    smash: { speed: 25, angle: -21 },
     lift: { speed: 23.5, angle: 62 },
     serve: { speed: 9, angle: 45 },
   };
@@ -89,7 +92,7 @@
       const p = this.players[this.server];
       const s = this.shuttle;
       s.x = p.x + p.face * 0.55; s.y = p.y + 1.15; s.vx = 0; s.vy = 0; s.speed = 0;
-      s.ang = p.face > 0 ? 0.9 : Math.PI - 0.9; s.angVel = 0;
+      s.ang = p.face > 0 ? -1.3 : -(Math.PI - 1.3); s.angVel = 0;   // held cork down, as a server holds it
     }
 
     step(dt = DT) {
@@ -160,24 +163,38 @@
       if (p.swing >= 0) {
         p.swing += dt;
         if (p.swing < HIT_FROM) { p.shot = this.pickShot(p); p.serveH = this.serveHeight(p.idx); }
-        if (p.swing >= HIT_FROM && p.swing <= HIT_TO && !p.hitDone) this.tryHit(p);
+        if (p.swing >= HIT_FROM && p.swing <= (this.defending(p) ? SWING_TIME : HIT_TO) && !p.hitDone) this.tryHit(p);
         if (p.swing >= SWING_TIME) { p.swing = -1; p.cooldown = SWING_COOLDOWN; }
       }
     }
 
-    // The kind of shot comes from the keys held with the swing: S smash, D drop, A normal return. With none of them
-    // a low shuttle is lifted, forward gives a flat drive and anything else is a clear. Decided from the keys held
-    // during the first moments of the swing, so S + Space pressed almost together still works.
+    // One button: Space hits and the game picks the shot from where the shuttle is. A low shuttle is lifted, one hit
+    // high above the feet (jumping, or reaching up) is smashed, holding the down arrow drops it just over the net,
+    // holding forward drives it flat and anything else is a clear. The S, D and A keys still force a smash, drop or
+    // clear. Decided again at the moment of contact (see tryHit), so the shot fits where the shuttle really is.
     pickShot(p) {
-      const inp = this.inputs[p.idx];
-      const s = this.shuttle;
       if (this.phase === 'serve' && p.idx === this.server) return 'serve';
+      const inp = this.inputs[p.idx];
       if (inp.smash) return 'smash';
       if (inp.drop) return 'drop';
+      if (inp.normal) return this.shuttle.y < 0.9 ? 'lift' : 'clear';
+      return this.autoShot(p);
+    }
+
+    autoShot(p) {
+      const inp = this.inputs[p.idx];
+      const s = this.shuttle;
       if (s.y < 0.9) return 'lift';
-      if (inp.normal) return 'clear';
+      if (inp.near) return 'drop';
+      if (s.y - p.y >= SMASH_FROM) return 'smash';
       const forward = p.face > 0 ? inp.right : inp.left;
-      return forward ? 'drive' : 'clear';
+      return forward && !this.defending(p) ? 'drive' : 'clear';
+    }
+
+    // Is a smash-like shuttle (fast and steeply down) heading for this player?
+    defending(p) {
+      const s = this.shuttle;
+      return this.phase === 'rally' && this.lastHitter !== p.idx && s.speed > DEFEND_SPEED && s.vy < -4 && s.vx * p.face < 0;
     }
 
     serveHeight(idx) {
@@ -203,11 +220,13 @@
       }
       if (this.phase !== 'rally' || this.lastHitter === p.idx) return;
       const c = this.hitCentre(p);
-      if (Math.hypot(s.x - c.x, s.y - c.y) > REACH) return;
+      if (Math.hypot(s.x - c.x, s.y - c.y) > (this.defending(p) ? DEFEND_REACH : REACH)) return;
       // can't reach over the net
       if (p.idx === 0 ? s.x > NET_X + 0.25 : s.x < NET_X - 0.25) return;
       p.hitDone = true;
-      let type = p.shot;
+      const inp = this.inputs[p.idx];
+      let type = inp.smash || inp.drop || inp.normal ? p.shot : this.autoShot(p);
+      p.shot = type;
       if (type === 'smash' && s.y < p.y + 1.3) type = 'clear'; // contact point too low to smash
       this.launch(p, type);
       this.lastHitter = p.idx;
@@ -276,7 +295,9 @@
         const inBounds = s.x >= 0 && s.x <= COURT_W;
         const landSide = s.x < NET_X ? 0 : 1;
         const hitter = this.lastHitter < 0 ? this.server : this.lastHitter;
-        this.awardPoint(inBounds && landSide !== hitter ? hitter : 1 - hitter, inBounds ? (landSide !== hitter ? 'in' : 'own') : 'out');
+        const shortServe = this.rallyHits === 1 && inBounds && landSide !== hitter && Math.abs(s.x - NET_X) < SERVICE_LINE;   // a serve must pass the short service line
+        if (shortServe) this.awardPoint(1 - hitter, 'short');
+        else this.awardPoint(inBounds && landSide !== hitter ? hitter : 1 - hitter, inBounds ? (landSide !== hitter ? 'in' : 'own') : 'out');
       } else if (s.y <= 0) { s.y = 0; s.vx = 0; s.vy = 0; }
     }
 

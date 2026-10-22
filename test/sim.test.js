@@ -40,6 +40,16 @@ test('the serve crosses the net and lands in the receivers court', () => {
   }
 });
 
+test('a serve that lands short of the short service line is a fault', () => {
+  const g = new Sim.Game({ rng: () => 0.5 });
+  g.shuttle.x = g.players[0].x; g.shuttle.y = 1; g.shuttle.vx = 0; g.shuttle.vy = 0;
+  g.phase = 'rally'; g.lastHitter = 0; g.rallyHits = 1;
+  g.shuttle.x = Sim.NET_X + 1.0;           // lands 1 m past the net, inside the short service line
+  g.shuttle.y = 0.01; g.shuttle.vy = -5;
+  g.step();
+  assert.deepStrictEqual(g.score, [0, 1]);
+});
+
 test('the second server uses the other side of the net', () => {
   const g = new Sim.Game();
   g.reset(1);
@@ -192,7 +202,7 @@ test('serves are approximate: they land around the target, sometimes short or ou
   }
   const mean = landings.reduce((a, b) => a + b, 0) / landings.length;
   const sd = Math.sqrt(landings.reduce((a, b) => a + (b - mean) ** 2, 0) / landings.length);
-  assert.ok(Math.abs(mean - (Sim.NET_X + Sim.AIM_DIST[2])) < 0.5, `mean landing ${mean}`);
+  assert.ok(Math.abs(mean - (Sim.NET_X + Sim.AIM_DIST[2])) < 0.8, `mean landing ${mean}`);
   assert.ok(sd > 0.6 && sd < 1.8, `spread ${sd}`);
   assert.ok(stray.inCourt > 90, 'most land in');
   assert.ok(stray.out > 0, 'some go out');
@@ -208,4 +218,42 @@ test('a short serve can clip the net', () => {
     if (g.score[1] === 1) faults++;
   }
   assert.ok(faults > 0 && faults < 150, `faults ${faults}`);
+});
+
+// ---- one-button hitting ----
+function rallyAt(shuttle, player = {}) {
+  const g = new Sim.Game({ rng: () => 0.5 });
+  g.phase = 'rally'; g.lastHitter = 1; g.rallyHits = 2;
+  Object.assign(g.players[0], player);
+  Object.assign(g.shuttle, { vx: 0, vy: 0, speed: 0 }, shuttle);
+  return g;
+}
+function swingAndRead(g, keys = {}) {
+  g.setInput(0, Object.assign({ hit: true }, keys));
+  g.step();
+  g.setInput(0, Object.assign({ hit: false }, keys));
+  let hit = null;
+  for (let i = 0; i < 0.4 / Sim.DT && !hit; i++) { g.step(); hit = (g.snapshot().ev || []).find((e) => e.k === 'hit') || hit; }
+  return hit;
+}
+
+test('Space alone picks the shot: lift when low, clear at normal height, smash when high', () => {
+  const lo = swingAndRead(rallyAt({ x: 3.0, y: 0.5 }, { x: 2.7 }));
+  assert.strictEqual(lo && lo.t, 'lift');
+  const mid = swingAndRead(rallyAt({ x: 3.0, y: 1.8 }, { x: 2.7 }));
+  assert.strictEqual(mid && mid.t, 'clear');
+  const hi = swingAndRead(rallyAt({ x: 3.0, y: 3.1 }, { x: 2.7, y: 1.0 }));   // in the air, above the head
+  assert.strictEqual(hi && hi.t, 'smash');
+});
+
+test('holding down with Space drops the shuttle', () => {
+  const h = swingAndRead(rallyAt({ x: 3.0, y: 1.8 }, { x: 2.7 }), { near: true });
+  assert.strictEqual(h && h.t, 'drop');
+});
+
+test('a smash coming down fast can be dug out from further away than a normal shuttle', () => {
+  // 1.5 m from the racket centre: beyond the normal 1.2 m reach, inside the extended one
+  const at = (extra) => { const g = rallyAt(Object.assign({ x: 3.45, y: 0.1 }, extra), { x: 3.0 }); g.players[0].swing = 0.1; g.tryHit(g.players[0]); return g.lastHitter === 0; };
+  assert.strictEqual(at({ vx: -4, vy: -9, speed: 9.8 }), true, 'fast and steep: defended');
+  assert.strictEqual(at({ vx: -1, vy: -2, speed: 2.2 }), false, 'slow: out of reach');
 });

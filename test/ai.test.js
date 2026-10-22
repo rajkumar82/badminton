@@ -28,12 +28,12 @@ test('bots finish a game and the winner follows the rules', () => {
 
 test('hard bot beats easy bot most of the time', () => {
   let wins = 0;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 20; i++) {
     const { g } = playBots(2, 0);
     if (g.winner === 0) wins++;
   }
-  console.log(`  hard beat easy ${wins}/6`);
-  assert.ok(wins >= 4);
+  console.log(`  hard beat easy ${wins}/20`);
+  assert.ok(wins >= 10);  // about 80% in practice: a smash can now be returned, so easy takes the odd game
 });
 
 test('win by two once both reach the target', () => {

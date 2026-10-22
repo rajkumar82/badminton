@@ -443,6 +443,21 @@ const Renderer = (() => {
     }
 
     // The serve aim: three spots on the opponent's half of the floor (near, mid, far) with the chosen one lit up, a
+    // Warning for a smash: while a fast, steeply falling shuttle is on its way down, a red spot shows where it will land.
+    function drawLanding(snap) {
+      const [x, y, vx, vy] = snap.sh;
+      if (snap.ph !== 'rally' || y < 0.35 || vy > -3 || Math.hypot(vx, vy) < 8) return;
+      const hit = Sim.predict({ x, y, vx, vy }, 0);
+      if (!hit) return;
+      const yb = FY + (H - FY) * 0.78, yMid = FY + (yb - FY) * 0.5;
+      const cx = sx(hit.x) + (sx(hit.x) - W / 2) * 0.06, pulse = 0.5 + 0.5 * Math.sin(time * 14), rr = (0.55 + 0.08 * pulse) * S;
+      ctx.save();
+      ctx.lineWidth = 3; ctx.strokeStyle = `rgba(248,113,113,${0.8 + 0.2 * pulse})`; ctx.fillStyle = `rgba(248,113,113,${0.22 + 0.15 * pulse})`;
+      ctx.beginPath(); ctx.ellipse(cx, yMid, rr, rr * 0.28, 0, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - rr * 0.5, yMid); ctx.lineTo(cx + rr * 0.5, yMid); ctx.moveTo(cx, yMid - rr * 0.14); ctx.lineTo(cx, yMid + rr * 0.14); ctx.stroke();
+      ctx.restore();
+    }
+
     // dotted arc showing the flight for the chosen height, and a label. Only the server (and spectators) see it.
     const arcCache = { key: '', pts: null };
     function drawServeAim(snap) {
@@ -658,7 +673,8 @@ const Renderer = (() => {
           burst(e.x, 0.05, 8, 0.4, ['#e8d3b0', '#caa66f'], 0.7);
         } else if (e.k === 'point') {
           crowdJump = 1.2;
-          if (e.why === 'out') gasp = 0.7;
+          if (e.why === 'out' || e.why === 'short') gasp = 0.7;
+          if (e.why === 'short') word('SHORT!', Math.max(0.5, Math.min(COURT_W - 0.5, ctxInfo.shuttleX || 6.7)), 1.3, '#fde047', 0.55);
           if (e.why === 'out') word('OUT!', Math.max(0.5, Math.min(COURT_W - 0.5, ctxInfo.shuttleX || 6.7)), 1.3, '#fde047', 0.55);
         } else if (e.k === 'over') {
           confetti = true; crowdJump = 3;
@@ -712,6 +728,7 @@ const Renderer = (() => {
         // shuttle shadow: smaller and fainter the higher it is
         drawShadow(sh[0], 0, 0.22 / (1 + sh[1] * 0.25), 0.3 / (1 + sh[1] * 0.2));
         if (snap.ph === 'serve') drawServeZone(snap.sv);
+        drawLanding(snap);
         if (snap.ph === 'serve' && snap.sa && (meta.seat === snap.sv || meta.seat < 0)) drawServeAim(snap);
         drawNet();
         const order = [0, 1];
