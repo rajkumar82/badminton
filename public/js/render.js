@@ -579,9 +579,13 @@ const Renderer = (() => {
       ctx.restore();
     }
 
-    // A badminton trainer seen from the side: white midsole, dark outsole, fluorescent lime upper with orange stripe, toe cap and heel tab, laces.
-    function shoe(fx, fy, f, accent, far) {
-      const LIME = far ? '#d0ff1a' : '#e4ff00', ORANGE = far ? '#ff7a00' : '#ff8a00';
+    // A badminton trainer seen from the side: white midsole, dark outsole, neon upper (a different colour for each player) with trim stripe, toe cap and heel tab, laces.
+    const SHOES = [
+      { upper: '#e4ff00', edge: '#9ab800', glow: 'rgba(224, 255, 0, 0.85)', trim: '#ff8a00' },    // you: neon lime, orange trim
+      { upper: '#ff3bd4', edge: '#b0008c', glow: 'rgba(255, 59, 212, 0.85)', trim: '#00e5ff' },   // opponent: neon pink, cyan trim
+    ];
+    function shoe(fx, fy, f, pal, far) {
+      const LIME = pal.upper, ORANGE = pal.trim;
       const X = (d) => sx(fx + f * d), Y = (d) => sy(fy + d);
       ctx.save();
       ctx.lineJoin = 'round';
@@ -591,9 +595,9 @@ const Renderer = (() => {
       ctx.fillStyle = far ? '#cbd5e1' : '#f1f5f9';
       ctx.beginPath(); ctx.moveTo(X(-0.1), Y(0.03)); ctx.lineTo(X(0.285), Y(0.03)); ctx.quadraticCurveTo(X(0.3), Y(0.05), X(0.275), Y(0.068)); ctx.lineTo(X(-0.1), Y(0.068)); ctx.closePath(); ctx.fill();
       // upper: heel, collar, tongue, laced instep, rounded toe box
-      ctx.shadowColor = 'rgba(224, 255, 0, 0.85)'; ctx.shadowBlur = 0.09 * S;   // a neon glow
+      ctx.shadowColor = pal.glow; ctx.shadowBlur = 0.09 * S;   // a neon glow
       ctx.fillStyle = LIME;
-      ctx.strokeStyle = '#9ab800'; ctx.lineWidth = Math.max(1, 0.008 * S);
+      ctx.strokeStyle = pal.edge; ctx.lineWidth = Math.max(1, 0.008 * S);
       ctx.beginPath();
       ctx.moveTo(X(-0.1), Y(0.068));
       ctx.lineTo(X(0.275), Y(0.068));
@@ -650,7 +654,7 @@ const Renderer = (() => {
         ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(sx(kx), sy(ky), 0.07 * S, 0, 6.3); ctx.fill();   // knee
         const t = 0.28; limb(ax0, ay0, ax0 + (kx - ax0) * t, ay0 + (ky - ay0) * t, 0.125, '#f8fafc');   // sock
         limb(ax0 + (kx - ax0) * t, ay0 + (ky - ay0) * t, ax0 + (kx - ax0) * (t + 0.05), ay0 + (ky - ay0) * (t + 0.05), 0.127, col.main);   // sock band
-        shoe(fx, fy, face, col.main, k === 0);
+        shoe(fx, fy, face, SHOES[idx], k === 0);
         thighEnds.push([hipX + (kx - hipX) * 0.5, hipY + (ky - hipY) * 0.5]);
       });
       // shorts: a waistband and a leg over each thigh
