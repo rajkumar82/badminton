@@ -346,7 +346,7 @@
     }
     if (s.ph === 'serve') {
       banner.hidden = true; sub.hidden = false;
-      sub.textContent = s.sv === seat ? (isTouch ? 'Your serve: pick how far and how high, then tap HIT. It lands somewhere near the ring' : 'Your serve: ↑ ↓ how far, hold S (flat) or D (high), then Space. It lands somewhere near the ring') : `${names[s.sv]} to serve`;
+      sub.textContent = s.sv === seat ? (isTouch ? 'Your serve: pick distance and height, then HIT' : 'Your serve: ↑ ↓ how far, hold S (flat) or D (high), then Space. It lands somewhere near the ring') : `${names[s.sv]} to serve`;
     } else if (s.ph === 'point') {
       banner.hidden = false; sub.hidden = true;
       banner.textContent = `${names[s.sv]} scores!`;
