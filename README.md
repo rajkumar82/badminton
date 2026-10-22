@@ -79,6 +79,19 @@ move up to the net and play the serve at once.
 Open the page in two browser windows to try online play on one machine. `GET /api/stats` shows how many games are
 running.
 
+## Connection quality (silent)
+
+As soon as an online game connects, each browser times a quick burst of pings to the server and keeps checking every
+two seconds. Nothing is shown. From that each player is adjusted on their own:
+
+- **How far behind the game is drawn:** a steady connection draws the game about 34 ms behind the server, a bumpy one
+  up to 110 ms, so motion stays smooth without adding more delay than needed.
+- **Lag compensation:** the browser tells the server its round trip and display delay, and the server judges that
+  player's hits against where the shuttle was when they pressed (at most 0.12 s back). A press that looked on time on a
+  slow connection counts as on time.
+- **Trying it:** open the game with `?lag=80` to add 80 ms each way to that browser's connection, as if the server were
+  far away (testing aid only).
+
 ## Deploying
 
 Live at https://badminton.nocod.dev (Cloud Run service `badminton` in project `nocode-512210`, `asia-south1`, routed by

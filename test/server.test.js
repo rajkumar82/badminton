@@ -144,3 +144,22 @@ test('a wrong token cannot take over a seat', async () => {
     [a, x].forEach((w) => w.close());
   } finally { srv.close(); }
 });
+
+test('ping is answered at once and a reported connection sets that players lag compensation', async () => {
+  const srv = await startServer(0);
+  try {
+    const a = await client(srv.port), b = await client(srv.port);
+    a.sendJson({ t: 'ping', c: 123 });
+    assert.strictEqual((await a.next('pong')).c, 123);
+    a.sendJson({ t: 'create', name: 'Asha' });
+    const code = (await a.next('joined')).room.code;
+    b.sendJson({ t: 'join', code, name: 'Bo' });
+    await b.next('joined');
+    a.sendJson({ t: 'rtt', rtt: 100, view: 40 });
+    b.sendJson({ t: 'rtt', rtt: 5000, view: 900 });   // absurd values are clamped
+    await new Promise((r) => setTimeout(r, 150));
+    const g = rooms.get(code).game;
+    assert.ok(Math.abs(g.lag[0] - 0.09) < 1e-9, `lag 0 ${g.lag[0]}`);
+    assert.ok(g.lag[1] <= 0.12 + 1e-9 && g.lag[1] > 0.09, `lag 1 ${g.lag[1]}`);
+  } finally { srv.close(); }
+});

@@ -263,3 +263,18 @@ test('a low shuttle can be picked up in a lunge: the racket reaches down towards
   g.players[0].swing = 0.1; g.tryHit(g.players[0]);
   assert.strictEqual(g.lastHitter, 0);
 });
+
+test('lag compensation: a hit is judged against where the shuttle was a moment ago', () => {
+  const build = (lag) => {
+    const g = rallyAt({ x: 3.5, y: 1.6, vx: 8, vy: 0, speed: 8 }, { x: 3.0 });
+    g.lag[0] = lag;
+    // the shuttle has been flying away from the racket: 0.1 s ago it was within reach, now it is out of it
+    for (let i = 0; i < 20; i++) g.hist.push([3.45 + i * 0.07, 1.6]);   // oldest first, newest last
+    g.shuttle.x = 3.45 + 19 * 0.07;                                      // 4.78: well out of the 1.2 m reach of a racket at 3.45
+    g.players[0].swing = 0.1;
+    g.tryHit(g.players[0]);
+    return g.lastHitter === 0;
+  };
+  assert.strictEqual(build(0), false, 'without compensation the hit is out of reach');
+  assert.strictEqual(build(0.12), true, 'with compensation it counts, because the player saw it in reach');
+});

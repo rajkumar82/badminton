@@ -71,6 +71,8 @@
       this.phaseTime = 0;
       this.lastHitter = -1;
       this.rallyHits = 0;
+      this.lag = this.lag || [0, 0];   // seconds each player's screen is behind the game (set by the server from the measured connection)
+      this.hist = [];                   // the shuttle's last positions, for lag compensation
       this.time = 0;
       this.events = [];
       this.shuttle = { x: 0, y: 0, vx: 0, vy: 0, ang: 0, angVel: 0, speed: 0 };
@@ -100,11 +102,11 @@
       this.phaseTime += dt;
       for (const p of this.players) this.stepPlayer(p, dt);
       if (this.phase === 'serve') this.holdShuttle();
-      else if (this.phase === 'rally') this.stepShuttle(dt);
+      else if (this.phase === 'rally') { this.stepShuttle(dt); this.remember(); }
       else if (this.phase === 'point') {
         this.stepShuttle(dt);
         if (this.phaseTime >= POINT_PAUSE) {
-          this.phase = 'serve'; this.phaseTime = 0; this.lastHitter = -1; this.rallyHits = 0;
+          this.phase = 'serve'; this.phaseTime = 0; this.lastHitter = -1; this.rallyHits = 0; this.hist.length = 0;
           for (const p of this.players) { p.swing = -1; p.hitDone = false; }
           this.holdShuttle();
         }
@@ -207,6 +209,21 @@
       return { x: p.x + p.face * 0.45, y: p.y + (this.shuttle.y < 1.0 ? 1.0 : 1.6) };
     }
 
+    // Lag compensation: a player on a slow connection sees the shuttle where it was a moment ago, so their hit is
+    // judged against that older position (at most 0.12 s back). The shot itself still leaves from where it is now.
+    remember() {
+      this.hist.push([this.shuttle.x, this.shuttle.y]);
+      if (this.hist.length > 20) this.hist.shift();
+    }
+
+    seenShuttle(p) {
+      const back = Math.min(0.12, Math.max(0, this.lag[p.idx] || 0));
+      const n = Math.min(this.hist.length - 1, Math.round(back / DT));
+      if (n <= 0) return this.shuttle;
+      const h = this.hist[this.hist.length - 1 - n];
+      return { x: h[0], y: h[1] };
+    }
+
     tryHit(p) {
       const s = this.shuttle;
       if (this.phase === 'serve') {
@@ -221,9 +238,10 @@
       }
       if (this.phase !== 'rally' || this.lastHitter === p.idx) return;
       const c = this.hitCentre(p);
-      if (Math.hypot(s.x - c.x, s.y - c.y) > (this.defending(p) ? DEFEND_REACH : REACH)) return;
+      const seen = this.seenShuttle(p);
+      if (Math.hypot(seen.x - c.x, seen.y - c.y) > (this.defending(p) ? DEFEND_REACH : REACH)) return;
       // can't reach over the net
-      if (p.idx === 0 ? s.x > NET_X + 0.25 : s.x < NET_X - 0.25) return;
+      if (p.idx === 0 ? seen.x > NET_X + 0.25 : seen.x < NET_X - 0.25) return;
       p.hitDone = true;
       const inp = this.inputs[p.idx];
       let type = inp.smash || inp.drop || inp.normal ? p.shot : this.autoShot(p);

@@ -160,6 +160,20 @@ function handle(ws, msg) {
       room.rejoin(ws, seat);
       break;
     }
+    case 'ping': {
+      // answered at once, so the browser can measure the round trip
+      send(ws, { t: 'pong', c: Number(msg.c) || 0 });
+      break;
+    }
+    case 'rtt': {
+      // the browser reports how long a round trip takes and how much it delays what it shows; the game uses that
+      // to judge this player's hits against what they actually saw
+      const room = ws.room;
+      if (!room || ws.seat < 0) return;
+      const rtt = Math.max(0, Math.min(1500, Number(msg.rtt) || 0)), view = Math.max(0, Math.min(500, Number(msg.view) || 0));
+      room.game.lag[ws.seat] = Math.min(0.12, (rtt / 2 + view) / 1000);
+      break;
+    }
     case 'input': {
       const room = ws.room;
       if (!room || ws.seat < 0 || !room.started) return;

@@ -27,6 +27,8 @@
   document.body.classList.toggle('touch', isTouch);
   const buzz = (pattern) => { if (isTouch && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) { /* not supported (iPhone) */ } } };
 
+  const SIM_LAG = Math.max(0, Math.min(400, Number(new URLSearchParams(location.search).get('lag')) || 0));
+
   const inviteCode = (new URLSearchParams(location.search).get('g') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
 
   // ---------- panels ----------
@@ -136,8 +138,15 @@
     try { sock = new WebSocket(wsUrl()); } catch (e) { sock = null; }
     ws = sock;
     if (!sock) { scheduleRetry(); return; }
+    if (SIM_LAG) {   // ?lag=80 adds that many ms each way, to try the game as if the server were far away
+      const realSend = sock.send.bind(sock);
+      sock.send = (d) => setTimeout(() => { if (sock.readyState === 1) realSend(d); }, SIM_LAG);
+    }
     sock.onopen = () => { if (ws === sock && retry) sock.send(JSON.stringify(retry.msg)); };
-    sock.onmessage = (e) => { if (ws !== sock) return; let m; try { m = JSON.parse(e.data); } catch (err) { return; } onServer(m); };
+    sock.onmessage = (e) => {
+      const go = () => { if (ws !== sock) return; let m; try { m = JSON.parse(e.data); } catch (err) { return; } onServer(m); };
+      if (SIM_LAG) setTimeout(go, SIM_LAG); else go();
+    };
     sock.onclose = () => {
       if (ws !== sock) return;            // closed on purpose
       ws = null;
@@ -163,6 +172,7 @@
   }
 
   function leaveOnline() {
+    stopPingTest();
     stopRetry(); saveSession(null); pausedUntil = 0;
     if (ws) { const s = ws; ws = null; try { s.send(JSON.stringify({ t: 'leave' })); s.close(); } catch (e) { /* closed */ } }
   }
@@ -189,6 +199,38 @@
     return true;
   }
 
+  // ---------- connection test ----------
+  // Silent: as soon as we are connected the browser times a burst of pings to the server, then keeps checking. From
+  // that it picks how far behind to draw the game (a steadier connection needs less) and tells the server, which
+  // judges this player's hits against what they actually saw. Each player is measured and adjusted on their own.
+  let viewDelay = 55;               // ms behind the server that the game is drawn
+  let pingTimer = null, pingSamples = [], pingSent = 0, reportedRtt = -1;
+  function stopPingTest() { clearInterval(pingTimer); pingTimer = null; pingSamples = []; pingSent = 0; reportedRtt = -1; }
+  function startPingTest() {
+    stopPingTest();
+    const fire = () => { if (ws && ws.readyState === 1) { ws.send(JSON.stringify({ t: 'ping', c: performance.now() })); pingSent++; } };
+    fire();
+    // a quick burst of eight at first, then one every two seconds
+    pingTimer = setInterval(() => { fire(); if (pingSent === 8) { clearInterval(pingTimer); pingTimer = setInterval(fire, 2000); } }, 150);
+  }
+  function onPong(sent) {
+    const rtt = performance.now() - sent;
+    if (!(rtt >= 0 && rtt < 3000)) return;
+    pingSamples.push(rtt);
+    if (pingSamples.length > 16) pingSamples.shift();
+    if (pingSamples.length < 4) return;
+    const sorted = pingSamples.slice().sort((a, b) => a - b);
+    const median = sorted[sorted.length >> 1];
+    const jitter = pingSamples.reduce((a, v) => a + Math.abs(v - median), 0) / pingSamples.length;
+    // draw the game a little further behind when the connection is bumpy (never less than two server updates)
+    const want = Math.max(34, Math.min(110, 34 + jitter * 2.2));
+    viewDelay += (want - viewDelay) * 0.5;
+    if (reportedRtt < 0 || Math.abs(median - reportedRtt) > Math.max(8, reportedRtt * 0.2)) {
+      reportedRtt = median;
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'rtt', rtt: Math.round(median), view: Math.round(viewDelay) }));
+    }
+  }
+
   function link() { return `${location.origin}/?g=${room.code}`; }
 
   function onServer(m) {
@@ -197,6 +239,7 @@
         stopRetry();
         mode = 'online'; role = m.role; seat = m.seat; room = m.room; names = room.names.slice();
         saveSession({ code: room.code, token: m.token || null });
+        startPingTest();
         if (!m.resumed) { renderer.reset(); buffer = []; view = null; rematchSent = false; lastPhase = ''; lastScore = '0-0'; pausedUntil = 0; }
         else buffer = [];
         $('hud').hidden = false; $('menuBtn').hidden = false; updateNames(); Sound.ambience(true);
@@ -212,6 +255,7 @@
         show(null);
         break;
       case 'room': room = m.room; break;
+      case 'pong': onPong(m.c); break;
       case 'snap': {
         buffer.push({ t: performance.now(), s: m.s });
         if (buffer.length > 12) buffer.shift();
@@ -375,7 +419,7 @@
   }
   function interpolated() {
     if (!buffer.length) return null;
-    const rt = performance.now() - 55;
+    const rt = performance.now() - viewDelay;
     let i = buffer.length - 1;
     while (i > 0 && buffer[i - 1].t > rt) i--;
     if (i === 0) return buffer[0].s;
