@@ -437,11 +437,26 @@
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then((l) => { wake = l; }).catch(() => {}); } catch (e) { /* ignore */ }
   }
   document.addEventListener('visibilitychange', () => { if (isTouch && document.visibilityState === 'visible' && document.body.classList.contains('playing')) keepAwake(); });
+  // The page plays sideways on a phone held upright: body.rot turns the whole app a quarter turn (see the css), which
+  // works even with auto-rotate off. The compact and tiny layouts depend on the size of the app, not of the screen.
+  function layout() {
+    const portrait = innerHeight > innerWidth;
+    const rot = isTouch && document.body.classList.contains('playing') && portrait;
+    const changed = rot !== document.body.classList.contains('rot');
+    document.body.classList.toggle('rot', rot);
+    const h = rot ? innerWidth : innerHeight;
+    document.documentElement.classList.toggle('compact', h < 520);
+    document.documentElement.classList.toggle('tiny', h < 420);
+    if (changed) setTimeout(() => window.dispatchEvent(new Event('resize')), 0);   // so the canvas takes the app's new size
+  }
+  window.addEventListener('resize', layout);
+  window.addEventListener('orientationchange', layout);
+  layout();
   function updateTouch(s) {
     const playing = (mode === 'local' || mode === 'online') && seat >= 0;
     const show = playing && !!s && $('overlay').classList.contains('hidden');
     if (playing && !document.body.classList.contains('playing')) keepAwake();
-    document.body.classList.toggle('playing', playing);
+    if (playing !== document.body.classList.contains('playing')) { document.body.classList.toggle('playing', playing); layout(); }
     if (show !== touchShown) {
       touchShown = show; $('touch').hidden = !show;
       if (!show) for (const el of document.querySelectorAll('#touch .down')) el.classList.remove('down');

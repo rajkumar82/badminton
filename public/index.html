@@ -150,45 +150,43 @@
     #tServe .grp { display: flex; gap: 8px; align-items: center; background: rgba(14, 8, 40, 0.72); border: 1px solid rgba(190, 170, 255, 0.3); border-radius: 999px; padding: 5px 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
     #tServe button { font-size: 14px; padding: 9px 13px; border-radius: 999px; background: var(--card2); border: 1px solid rgba(190, 170, 255, 0.25); touch-action: none; }
     #tServe button.on { background: var(--brand); border-color: transparent; }
-    #rotate { display: none; position: fixed; inset: 0; z-index: 4; align-items: center; justify-content: center; flex-direction: column; gap: 14px; background: rgba(10, 6, 32, 0.9); color: var(--text); font-size: 20px; font-weight: 700; text-align: center; padding: 24px; }
-    #rotate .phone { font-size: 56px; animation: tilt 1.8s ease-in-out infinite; }
-    @keyframes tilt { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+    /* a phone held upright (or with auto-rotate off) plays sideways: the whole page turns a quarter turn */
+    #app { position: fixed; inset: 0; }
+    body.rot #app { inset: auto; top: 0; left: 100%; width: 100vh; height: 100vw; width: 100dvh; height: 100dvw; transform-origin: 0 0; transform: rotate(90deg); }
+    #rotate { display: none; position: fixed; top: 42%; left: 50%; transform: translateX(-50%); z-index: 4; pointer-events: none; align-items: center; gap: 8px; background: rgba(10, 6, 32, 0.9); border: 1px solid rgba(190, 170, 255, 0.35); border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+    body.rot #rotate { display: flex; animation: hint 7s forwards; }
+    @keyframes hint { 0%, 80% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
     body.touch #help { display: none; }
-    @media (orientation: portrait) { body.touch.playing #rotate { display: flex; } }
     /* a phone held sideways is short: the start menu goes two columns */
-    @media (max-height: 520px) and (orientation: landscape) {
-      #pMenu { width: min(660px, 100%); display: grid; grid-template-columns: 1fr 1fr; gap: 6px 26px; align-items: center; }
-      .hero .logo { width: 56px; height: 56px; }
-      .hero h1 { font-size: 32px; }
-      .hero .tag { margin-bottom: 0; }
-      .stack { margin-top: 8px; gap: 8px; }
-      .stack button, .stack select { padding-top: 10px; padding-bottom: 10px; }
-      #btnCreate { font-size: 16px; }
-      .card { padding: 14px 18px; }
-    }
+      html.compact #pMenu { width: min(660px, 100%); display: grid; grid-template-columns: 1fr 1fr; gap: 6px 26px; align-items: center; }
+      html.compact .hero .logo { width: 56px; height: 56px; }
+      html.compact .hero h1 { font-size: 32px; }
+      html.compact .hero .tag { margin-bottom: 0; }
+      html.compact .stack { margin-top: 8px; gap: 8px; }
+      html.compact .stack button, html.compact .stack select { padding-top: 10px; padding-bottom: 10px; }
+      html.compact #btnCreate { font-size: 16px; }
+      html.compact .card { padding: 14px 18px; }
     /* short screens (a phone held sideways): slim scoreboard and small messages, so the court gets the room */
-    @media (max-height: 520px) {
-      #hud { top: 4px; gap: 3px; }
-      #sb { border-radius: 12px; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35); }
-      .side { min-width: 0; padding: 2px 12px; gap: 8px; }
-      #side0, #side1 { border-top-width: 3px; }
-      .score { font-size: 24px; min-width: 1.2ch; }
-      .side .name { font-size: 12px; max-width: 90px; }
-      .side .tag { height: 8px; }
-      .mid { display: none; }
-      #gp { font-size: 11px; padding: 2px 10px; }
-      #watchers { font-size: 11px; padding: 1px 9px; }
-      #banner { top: 44px; font-size: 18px; font-weight: 800; text-shadow: none; }
-      #banner, #sub span { background: rgba(10, 13, 34, 0.7); }
-      #banner { left: 50%; right: auto; transform: translateX(-50%); padding: 4px 16px; border-radius: 999px; white-space: nowrap; animation: none; }
-      #sub { top: 44px; font-size: 12px; font-weight: 600; line-height: 1.3; }
-      #sub span { display: inline-block; max-width: min(340px, 56vw); padding: 3px 12px; border-radius: 14px; }
-      .corner { top: 6px; width: 32px; height: 32px; font-size: 15px; }
-      #menuBtn { left: 6px; }
-      #mute { right: 52px; }
-    }
+      html.compact #hud { top: 4px; gap: 3px; }
+      html.compact #sb { border-radius: 12px; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35); }
+      html.compact .side { min-width: 0; padding: 2px 12px; gap: 8px; }
+      html.compact #side0, html.compact #side1 { border-top-width: 3px; }
+      html.compact .score { font-size: 24px; min-width: 1.2ch; }
+      html.compact .side .name { font-size: 12px; max-width: 90px; }
+      html.compact .side .tag { height: 8px; }
+      html.compact .mid { display: none; }
+      html.compact #gp { font-size: 11px; padding: 2px 10px; }
+      html.compact #watchers { font-size: 11px; padding: 1px 9px; }
+      html.compact #banner { top: 44px; font-size: 18px; font-weight: 800; text-shadow: none; }
+      html.compact #banner, html.compact #sub span { background: rgba(10, 13, 34, 0.7); }
+      html.compact #banner { left: 50%; right: auto; transform: translateX(-50%); padding: 4px 16px; border-radius: 999px; white-space: nowrap; animation: none; }
+      html.compact #sub { top: 44px; font-size: 12px; font-weight: 600; line-height: 1.3; }
+      html.compact #sub span { display: inline-block; max-width: min(340px, 56%); padding: 3px 12px; border-radius: 14px; }
+      html.compact .corner { top: 6px; width: 32px; height: 32px; font-size: 15px; }
+      html.compact #menuBtn { left: 6px; }
+      html.compact #mute { right: 52px; }
     @media (max-width: 400px) { .hero h1 { font-size: 36px; } }
-    @media (max-height: 420px) { #touch #tJump { margin-bottom: 46px; } .tbtn { width: 62px; height: 62px; font-size: 22px; } .tbtn.hit { width: 88px; height: 88px; } .tbtn.sm { width: 52px; height: 52px; } #tServe button { padding: 7px 11px; } }
+    html.tiny #touch #tJump { margin-bottom: 46px; } html.tiny .tbtn { width: 62px; height: 62px; font-size: 22px; } html.tiny .tbtn.hit { width: 88px; height: 88px; } html.tiny .tbtn.sm { width: 52px; height: 52px; } html.tiny #tServe button { padding: 7px 11px; }
     .spinner { width: 22px; height: 22px; border: 3px solid rgba(255, 255, 255, 0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #msgButtons { display: grid; gap: 10px; margin-top: 18px; }
@@ -196,6 +194,7 @@
   </style>
 </head>
 <body>
+<div id="app">
   <canvas id="stage"></canvas>
 
   <div id="hud" hidden>
@@ -228,7 +227,7 @@
       <button class="tbtn hit" data-k="hit" aria-label="Hit">HIT</button>
     </div>
   </div>
-  <div id="rotate"><div class="phone">📱</div>Turn your phone sideways to play</div>
+  <div id="rotate">📱 Turn your phone sideways, left edge down</div>
 
   <div id="overlay">
     <div class="card" id="pMenu">
@@ -282,6 +281,8 @@
       <div id="msgButtons"></div>
     </div>
   </div>
+
+</div>
 
   <script src="/js/sim.js"></script>
   <script src="/js/ai.js"></script>
