@@ -92,7 +92,7 @@
       const p = this.players[this.server];
       const s = this.shuttle;
       s.x = p.x + p.face * 0.55; s.y = p.y + 1.15; s.vx = 0; s.vy = 0; s.speed = 0;
-      s.ang = p.face > 0 ? -1.3 : -(Math.PI - 1.3); s.angVel = 0;   // held cork down, as a server holds it
+      s.ang = p.face > 0 ? -0.75 : -(Math.PI - 0.75); s.angVel = 0;   // held cork down and pointing at the opponent, as a server holds it
     }
 
     step(dt = DT) {
