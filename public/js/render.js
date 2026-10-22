@@ -579,6 +579,41 @@ const Renderer = (() => {
       ctx.restore();
     }
 
+    // A badminton trainer seen from the side: white midsole, gum outsole, mesh upper with a coloured stripe, laces, heel tab.
+    function shoe(fx, fy, f, accent, far) {
+      const X = (d) => sx(fx + f * d), Y = (d) => sy(fy + d);
+      ctx.save();
+      ctx.lineJoin = 'round';
+      // outsole and midsole
+      ctx.fillStyle = '#334155';
+      ctx.beginPath(); ctx.moveTo(X(-0.1), Y(0)); ctx.lineTo(X(0.27), Y(0)); ctx.quadraticCurveTo(X(0.3), Y(0.012), X(0.285), Y(0.03)); ctx.lineTo(X(-0.1), Y(0.03)); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = far ? '#cbd5e1' : '#f1f5f9';
+      ctx.beginPath(); ctx.moveTo(X(-0.1), Y(0.03)); ctx.lineTo(X(0.285), Y(0.03)); ctx.quadraticCurveTo(X(0.3), Y(0.05), X(0.275), Y(0.068)); ctx.lineTo(X(-0.1), Y(0.068)); ctx.closePath(); ctx.fill();
+      // upper: heel, collar, tongue, laced instep, rounded toe box
+      ctx.fillStyle = far ? '#e2e8f0' : '#ffffff';
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = Math.max(1, 0.008 * S);
+      ctx.beginPath();
+      ctx.moveTo(X(-0.1), Y(0.068));
+      ctx.lineTo(X(0.275), Y(0.068));
+      ctx.quadraticCurveTo(X(0.3), Y(0.1), X(0.2), Y(0.125));
+      ctx.quadraticCurveTo(X(0.11), Y(0.135), X(0.07), Y(0.17));
+      ctx.lineTo(X(0.0), Y(0.2));
+      ctx.quadraticCurveTo(X(-0.06), Y(0.21), X(-0.095), Y(0.19));
+      ctx.quadraticCurveTo(X(-0.12), Y(0.13), X(-0.1), Y(0.068));
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // side stripe in the team colour, and a heel tab
+      ctx.strokeStyle = accent; ctx.lineWidth = Math.max(1.5, 0.026 * S); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(X(-0.06), Y(0.11)); ctx.quadraticCurveTo(X(0.06), Y(0.13), X(0.17), Y(0.095)); ctx.stroke();
+      ctx.lineWidth = Math.max(1.5, 0.03 * S);
+      ctx.beginPath(); ctx.moveTo(X(-0.1), Y(0.16)); ctx.lineTo(X(-0.1), Y(0.1)); ctx.stroke();
+      // laces
+      ctx.strokeStyle = '#64748b'; ctx.lineWidth = Math.max(0.8, 0.007 * S);
+      ctx.beginPath();
+      for (let i = 0; i < 4; i++) { const d = 0.1 + i * 0.045; ctx.moveTo(X(d - 0.02), Y(0.158 - i * 0.012)); ctx.lineTo(X(d + 0.02), Y(0.125 - i * 0.012)); }
+      ctx.stroke();
+      ctx.restore();
+    }
+
     function drawPlayer(p, idx, name, mine, holding) {
       const [x, y, vx, vy, swing, shot] = p;
       const face = idx === 0 ? 1 : -1;
@@ -590,37 +625,73 @@ const Renderer = (() => {
       const lean = Math.max(-0.14, Math.min(0.14, vx * 0.022)) + (swing >= 0 ? face * 0.04 : 0);
       const hipY = y + 0.92 - (air ? 0 : Math.abs(Math.sin(cycle)) * 0.03 * run);
       const hipX = x - lean * 0.2;
-      // legs
+      const SKIN = idx === 0 ? '#f2c7a0' : '#c98f62', SKIN_D = idx === 0 ? '#d9a67d' : '#a9724a';
+      const SHORTS = idx === 0 ? '#f8fafc' : '#1f2937';
+      // legs: bare skin, white socks, trainers
       const legs = [0, 1].map((k) => {
         const ph = cycle + k * Math.PI;
         let fx, fy;
-        if (air) { fx = hipX + face * (k ? 0.18 : -0.12) + (k ? 0.1 : -0.1) * 0; fy = y + 0.38 + (k ? 0.08 : 0); }
+        if (air) { fx = hipX + face * (k ? 0.18 : -0.12); fy = y + 0.38 + (k ? 0.08 : 0); }
         else { fx = hipX + Math.sin(ph) * 0.3 * run + (k ? 0.1 : -0.1) * (1 - run); fy = Math.max(0, Math.cos(ph) * 0.14 * run); }
         return [fx, fy];
       });
-      // back leg first
-      legs.forEach(([fx, fy], k) => {
-        const kx = (hipX + fx) / 2 + face * 0.1, ky = (hipY + fy) / 2 + 0.05;
-        limb(hipX, hipY, kx, ky, 0.15, k ? col.dark : '#1e293b'); limb(kx, ky, fx, fy + 0.04, 0.13, k ? col.dark : '#1e293b');
-        ctx.fillStyle = '#f1f5f9'; ctx.beginPath(); ctx.ellipse(sx(fx + face * 0.06), sy(fy + 0.04), 0.13 * S, 0.06 * S, 0, 0, 6.3); ctx.fill();
+      const thighEnds = [];
+      legs.forEach(([fx, fy], k) => {                      // k 0 is the far leg (a shade darker), drawn first
+        const skin = k ? SKIN : SKIN_D;
+        const ax0 = fx, ay0 = fy + 0.14;                    // ankle
+        const kx = (hipX + ax0) / 2 + face * 0.1, ky = (hipY + ay0) / 2 + 0.05;
+        limb(hipX, hipY, kx, ky, 0.17, skin);               // thigh
+        limb(kx, ky, ax0, ay0, 0.12, skin);                 // calf
+        ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(sx(kx), sy(ky), 0.07 * S, 0, 6.3); ctx.fill();   // knee
+        const t = 0.28; limb(ax0, ay0, ax0 + (kx - ax0) * t, ay0 + (ky - ay0) * t, 0.125, '#f8fafc');   // sock
+        limb(ax0 + (kx - ax0) * t, ay0 + (ky - ay0) * t, ax0 + (kx - ax0) * (t + 0.05), ay0 + (ky - ay0) * (t + 0.05), 0.127, col.main);   // sock band
+        shoe(fx, fy, face, col.main, k === 0);
+        thighEnds.push([hipX + (kx - hipX) * 0.5, hipY + (ky - hipY) * 0.5]);
       });
-      // torso, shorts
+      // shorts: a waistband and a leg over each thigh
+      limb(hipX, hipY + 0.1, hipX, hipY + 0.02, 0.3, SHORTS);
+      thighEnds.forEach(([tx, ty]) => limb(hipX, hipY + 0.02, tx, ty, 0.22, SHORTS));
+      limb(hipX - 0.14, hipY + 0.14, hipX + 0.14, hipY + 0.14, 0.05, col.main);   // waistband
+      // free arm, behind the body: swings with the legs, goes up while hitting, and holds the shuttle when serving
       const shX = hipX + lean * 1.1 + face * 0.02, shY = hipY + 0.58;
-      limb(hipX, hipY, hipX, hipY + 0.1, 0.27, '#0f172a');
-      limb(hipX, hipY + 0.08, shX, shY, 0.34, col.main);
-      // head
+      {
+        const s2x = shX - face * 0.03, s2y = shY - 0.04;
+        let h2x, h2y;
+        if (holding && swing < 0) {
+          const tx = x + face * 0.55 - face * 0.05, ty = y + 1.15, d = Math.hypot(tx - s2x, ty - s2y), m = Math.min(1, 0.6 / d);
+          h2x = s2x + (tx - s2x) * m; h2y = s2y + (ty - s2y) * m;
+        } else {
+          const a2 = (swing >= 0 ? 70 : 165 + Math.sin(cycle) * 38 * run) * Math.PI / 180;
+          h2x = s2x + face * Math.sin(a2) * 0.58; h2y = s2y + Math.cos(a2) * 0.58;
+        }
+        const e2x = (s2x + h2x) / 2 - face * 0.03, e2y = (s2y + h2y) / 2 - 0.05;
+        limb(s2x, s2y, e2x, e2y, 0.15, col.dark);           // short sleeve
+        limb(e2x + (s2x - e2x) * 0.0, e2y, h2x, h2y, 0.105, SKIN_D);
+        limb(s2x, s2y, (s2x + e2x) / 2, (s2y + e2y) / 2, 0.15, col.dark);
+        ctx.fillStyle = SKIN_D; ctx.beginPath(); ctx.arc(sx(h2x), sy(h2y), 0.06 * S, 0, 6.3); ctx.fill();
+      }
+      // shirt
+      limb(hipX, hipY + 0.1, shX, shY, 0.34, col.main);
+      limb(hipX, hipY + 0.1, hipX, hipY + 0.2, 0.31, col.main);
+      ctx.fillStyle = col.dark; ctx.globalAlpha = 0.35; limb(hipX - face * 0.1, hipY + 0.16, shX - face * 0.1, shY - 0.04, 0.07, col.dark); ctx.globalAlpha = 1;   // a little shading on the back
+      // neck and head
       const hx = shX + face * 0.03, hy = shY + 0.24;
-      ctx.fillStyle = '#f2c7a0'; ctx.beginPath(); ctx.arc(sx(hx), sy(hy), 0.17 * S, 0, 6.3); ctx.fill();
+      limb(shX, shY + 0.06, hx, hy - 0.1, 0.1, SKIN);
+      ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(sx(hx), sy(hy), 0.17 * S, 0, 6.3); ctx.fill();
+      ctx.fillStyle = SKIN_D; ctx.beginPath(); ctx.arc(sx(hx - face * 0.06), sy(hy - 0.03), 0.04 * S, 0, 6.3); ctx.fill();   // ear
       ctx.fillStyle = '#1f2937'; ctx.beginPath(); ctx.arc(sx(hx - face * 0.03), sy(hy + 0.04), 0.17 * S, Math.PI * 0.95, Math.PI * 2.05); ctx.fill();
       ctx.fillStyle = col.band; ctx.fillRect(sx(hx) - 0.17 * S, sy(hy + 0.07), 0.34 * S, 0.06 * S);
       ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(sx(hx + face * 0.09), sy(hy + 0.0), 0.022 * S, 0, 6.3); ctx.fill();
-      // arm and racket
+      // racket arm: short sleeve, bare forearm, sweatband, hand
       const ang = (holding && swing < 0 ? SERVE_WAIT_ARM : armAngle(shot, swing)) * Math.PI / 180;
       const ax = shX, ay = shY - 0.04;
       const ux = face * Math.sin(ang), uy = Math.cos(ang);
       const hand = [ax + ux * 0.5, ay + uy * 0.5];
-      limb(ax, ay, hand[0], hand[1], 0.12, '#f2c7a0');
-      limb(ax, ay, (ax + hand[0]) / 2, (ay + hand[1]) / 2, 0.15, col.main);
+      const elbow = [ax + ux * 0.25 - face * 0.03, ay + uy * 0.25 - 0.05];
+      limb(elbow[0], elbow[1], hand[0], hand[1], 0.105, SKIN);
+      limb(ax, ay, elbow[0], elbow[1], 0.15, col.main);
+      limb(hand[0] - (hand[0] - elbow[0]) * 0.18, hand[1] - (hand[1] - elbow[1]) * 0.18, hand[0], hand[1], 0.115, col.band);
+      ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(sx(hand[0] + ux * 0.03), sy(hand[1] + uy * 0.03), 0.06 * S, 0, 6.3); ctx.fill();
       const handle = [hand[0] + ux * 0.2, hand[1] + uy * 0.2];
       const hc = [handle[0] + ux * 0.74, handle[1] + uy * 0.74];
       drawRacket(hc, ux, uy, col);
