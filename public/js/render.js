@@ -581,7 +581,7 @@ const Renderer = (() => {
 
     // A badminton trainer seen from the side: white midsole, dark outsole, fluorescent lime upper with orange stripe, toe cap and heel tab, laces.
     function shoe(fx, fy, f, accent, far) {
-      const LIME = far ? '#a6d900' : '#c6ff00', ORANGE = far ? '#e65c00' : '#ff6a00';
+      const LIME = far ? '#d0ff1a' : '#e4ff00', ORANGE = far ? '#ff7a00' : '#ff8a00';
       const X = (d) => sx(fx + f * d), Y = (d) => sy(fy + d);
       ctx.save();
       ctx.lineJoin = 'round';
@@ -591,8 +591,9 @@ const Renderer = (() => {
       ctx.fillStyle = far ? '#cbd5e1' : '#f1f5f9';
       ctx.beginPath(); ctx.moveTo(X(-0.1), Y(0.03)); ctx.lineTo(X(0.285), Y(0.03)); ctx.quadraticCurveTo(X(0.3), Y(0.05), X(0.275), Y(0.068)); ctx.lineTo(X(-0.1), Y(0.068)); ctx.closePath(); ctx.fill();
       // upper: heel, collar, tongue, laced instep, rounded toe box
+      ctx.shadowColor = 'rgba(224, 255, 0, 0.85)'; ctx.shadowBlur = 0.09 * S;   // a neon glow
       ctx.fillStyle = LIME;
-      ctx.strokeStyle = '#6b8f00'; ctx.lineWidth = Math.max(1, 0.008 * S);
+      ctx.strokeStyle = '#9ab800'; ctx.lineWidth = Math.max(1, 0.008 * S);
       ctx.beginPath();
       ctx.moveTo(X(-0.1), Y(0.068));
       ctx.lineTo(X(0.275), Y(0.068));
@@ -602,6 +603,7 @@ const Renderer = (() => {
       ctx.quadraticCurveTo(X(-0.06), Y(0.21), X(-0.095), Y(0.19));
       ctx.quadraticCurveTo(X(-0.12), Y(0.13), X(-0.1), Y(0.068));
       ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
       // side stripe in the team colour, and a heel tab
       ctx.fillStyle = ORANGE;   // toe cap
       ctx.beginPath(); ctx.moveTo(X(0.2), Y(0.068)); ctx.lineTo(X(0.275), Y(0.068)); ctx.quadraticCurveTo(X(0.3), Y(0.1), X(0.2), Y(0.125)); ctx.quadraticCurveTo(X(0.215), Y(0.095), X(0.2), Y(0.068)); ctx.fill();
