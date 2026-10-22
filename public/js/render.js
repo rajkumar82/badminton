@@ -746,41 +746,41 @@ const Renderer = (() => {
       return heldCache.ang;
     }
 
+    // A nylon shuttlecock: a rounded cork base and a see-through conical skirt of ribs and rings, so the little
+    // square holes show whatever is behind. Local +x is the way the cork leads; the skirt trails behind it.
     function drawShuttle(sh) {
       const [x, y, , , ang] = sh;
       ctx.save();
       ctx.translate(sx(x), sy(y));
       ctx.rotate(-ang);
-      const k = S * 1.35;
-      // the skirt: a cone of feathers (local -x is back from the cork), halfwidth growing from the cork to the rim
-      const hw = (d) => 0.05 + (d - 0.02) * 0.27;          // halfwidth at distance d behind the cork
-      const grad = ctx.createLinearGradient(-0.27 * k, 0, 0, 0);
-      grad.addColorStop(0, 'rgba(255,255,255,0.97)'); grad.addColorStop(1, 'rgba(214,224,242,0.97)');
-      ctx.fillStyle = grad;
+      const k = S * 1.4;
+      const X0 = 0.07, X1 = 0.33;                         // skirt starts and ends this far behind the cork centre
+      const hw = (d) => 0.046 + (d - X0) / (X1 - X0) * 0.07 + Math.sin((d - X0) / (X1 - X0) * Math.PI) * 0.008;   // half width: narrow at the cork, slightly bowed
+      const px = Math.max(1, 0.0075 * k);                 // thin lines
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      // faint veil so the skirt reads as a solid cone against a busy background
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      ctx.beginPath(); ctx.moveTo(-X0 * k, -hw(X0) * k); ctx.lineTo(-X1 * k, -hw(X1) * k); ctx.lineTo(-X1 * k, hw(X1) * k); ctx.lineTo(-X0 * k, hw(X0) * k); ctx.closePath(); ctx.fill();
+      // far half of the rings first (they pass behind), then the ribs, then the near half of each ring
+      const rings = [X0, 0.135, 0.2, 0.265, X1];
+      ctx.strokeStyle = 'rgba(210,222,245,0.75)'; ctx.lineWidth = px;
+      for (const d of rings) { ctx.beginPath(); ctx.ellipse(-d * k, 0, 0.016 * k, hw(d) * k, 0, -Math.PI / 2, Math.PI / 2, true); ctx.stroke(); }
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = Math.max(1.1, 0.009 * k);
       ctx.beginPath();
-      ctx.moveTo(-0.02 * k, -0.05 * k); ctx.lineTo(-0.27 * k, -hw(0.27) * k); ctx.quadraticCurveTo(-0.3 * k, 0, -0.27 * k, hw(0.27) * k); ctx.lineTo(-0.02 * k, 0.05 * k); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(100,116,150,0.9)'; ctx.lineWidth = Math.max(0.7, 0.008 * k); ctx.stroke();
-      // ribs along the skirt, and the little square holes between them
-      ctx.strokeStyle = 'rgba(120,135,170,0.75)'; ctx.lineWidth = Math.max(0.6, 0.007 * k);
-      ctx.beginPath();
-      for (let i = -2; i <= 2; i++) { ctx.moveTo(-0.02 * k, i * 0.025 * k); ctx.lineTo(-0.27 * k, i * hw(0.27) / 2 * k); }
+      for (const f of [-1, -0.87, -0.5, 0, 0.5, 0.87, 1]) { ctx.moveTo(-X0 * k, f * hw(X0) * k); ctx.lineTo(-X1 * k, f * hw(X1) * k); }
       ctx.stroke();
-      const hs = Math.max(1.4, 0.026 * k);                  // hole size in pixels, never too small to see
-      ctx.fillStyle = 'rgba(40,52,100,0.8)';
-      for (let d = 0.07; d < 0.26; d += 0.043) {
-        const w = hw(d), n = Math.max(2, Math.floor(w * 2 / 0.052));
-        for (let j = 0; j < n; j++) {
-          const yy = (-w + (j + 0.5) * (2 * w / n)) * k * 0.82;
-          ctx.fillRect(-d * k - hs / 2, yy - hs / 2, hs, hs);
-        }
-      }
-      // rim at the open end
-      ctx.beginPath(); ctx.ellipse(-0.27 * k, 0, 0.012 * k, hw(0.27) * k, 0, 0, 6.3); ctx.strokeStyle = 'rgba(70,85,125,0.95)'; ctx.lineWidth = Math.max(1, 0.014 * k); ctx.stroke();
-      // cork
-      const cg = ctx.createRadialGradient(0.005 * k, -0.02 * k, 0.005 * k, 0.01 * k, 0, 0.06 * k);
-      cg.addColorStop(0, '#fff1cf'); cg.addColorStop(1, '#d9a95c');
-      ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(0.01 * k, 0, 0.055 * k, 0, 6.3); ctx.fill();
-      ctx.strokeStyle = 'rgba(120,80,30,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.98)'; ctx.lineWidth = Math.max(1.1, 0.009 * k);
+      for (const d of rings) { ctx.beginPath(); ctx.ellipse(-d * k, 0, 0.016 * k, hw(d) * k, 0, Math.PI / 2, Math.PI * 1.5, true); ctx.stroke(); }
+      // the rim is a heavier ring
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.6, 0.016 * k);
+      ctx.beginPath(); ctx.ellipse(-X1 * k, 0, 0.016 * k, hw(X1) * k, 0, 0, 6.3); ctx.stroke();
+      // cork base: a rounded dome with a thin collar where the skirt is fixed
+      const cg = ctx.createRadialGradient(0.012 * k, -0.02 * k, 0.004 * k, 0.0, 0, 0.075 * k);
+      cg.addColorStop(0, '#fff6df'); cg.addColorStop(0.55, '#ecc983'); cg.addColorStop(1, '#b9873a');
+      ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.moveTo(-0.075 * k, -0.047 * k); ctx.quadraticCurveTo(0.035 * k, -0.075 * k, 0.062 * k, 0); ctx.quadraticCurveTo(0.035 * k, 0.075 * k, -0.075 * k, 0.047 * k); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(110,70,20,0.55)'; ctx.lineWidth = Math.max(0.7, 0.006 * k); ctx.stroke();
+      ctx.fillStyle = '#f8fafc'; ctx.fillRect(-0.085 * k, -0.05 * k, 0.018 * k, 0.1 * k);   // collar
       ctx.restore();
     }
 
