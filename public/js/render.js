@@ -29,9 +29,10 @@ const Renderer = (() => {
     drop: [[0, 60], [0.08, 20], [0.17, 80], [0.34, 105]],
     drive: [[0, 60], [0.08, 10], [0.17, 92], [0.34, 130]],
     lift: [[0, 60], [0.06, 190], [0.17, 100], [0.34, 30]],
-    serve: [[0, 60], [0.06, 175], [0.17, 110], [0.34, 40]],
+    serve: [[0, 150], [0.06, 172], [0.17, 110], [0.34, 40]],
   };
   const REST_ARM = 60;
+  const SERVE_WAIT_ARM = 150;     // the server waits with the racket hanging below the shuttle
 
   function armAngle(shot, t) {
     const k = SWINGS[shot] || SWINGS.clear;
@@ -536,7 +537,7 @@ const Renderer = (() => {
       ctx.beginPath(); ctx.moveTo(sx(x1), sy(y1)); ctx.lineTo(sx(x2), sy(y2)); ctx.stroke();
     }
 
-    function drawPlayer(p, idx, name, mine) {
+    function drawPlayer(p, idx, name, mine, holding) {
       const [x, y, vx, vy, swing, shot] = p;
       const face = idx === 0 ? 1 : -1;
       const col = COLORS[idx];
@@ -572,7 +573,7 @@ const Renderer = (() => {
       ctx.fillStyle = col.band; ctx.fillRect(sx(hx) - 0.17 * S, sy(hy + 0.07), 0.34 * S, 0.06 * S);
       ctx.fillStyle = '#111827'; ctx.beginPath(); ctx.arc(sx(hx + face * 0.09), sy(hy + 0.0), 0.022 * S, 0, 6.3); ctx.fill();
       // arm and racket
-      const ang = armAngle(shot, swing) * Math.PI / 180;
+      const ang = (holding && swing < 0 ? SERVE_WAIT_ARM : armAngle(shot, swing)) * Math.PI / 180;
       const ax = shX, ay = shY - 0.04;
       const ux = face * Math.sin(ang), uy = Math.cos(ang);
       const hand = [ax + ux * 0.5, ay + uy * 0.5];
@@ -748,7 +749,7 @@ const Renderer = (() => {
         if (snap.ph === 'serve' && snap.sa && (meta.seat === snap.sv || meta.seat < 0)) drawServeAim(snap);
         drawNet();
         const order = [0, 1];
-        for (const i of order) drawPlayer(snap.p[i], i, meta.names[i], meta.seat === i);
+        for (const i of order) drawPlayer(snap.p[i], i, meta.names[i], meta.seat === i, snap.ph === 'serve' && snap.sv === i);
 
         // trail follows the shuttle while it flies
         if (snap.ph === 'rally' || snap.ph === 'point') {
