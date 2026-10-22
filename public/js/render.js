@@ -579,8 +579,9 @@ const Renderer = (() => {
       ctx.restore();
     }
 
-    // A badminton trainer seen from the side: white midsole, gum outsole, mesh upper with a coloured stripe, laces, heel tab.
+    // A badminton trainer seen from the side: white midsole, dark outsole, fluorescent lime upper with orange stripe, toe cap and heel tab, laces.
     function shoe(fx, fy, f, accent, far) {
+      const LIME = far ? '#a6d900' : '#c6ff00', ORANGE = far ? '#e65c00' : '#ff6a00';
       const X = (d) => sx(fx + f * d), Y = (d) => sy(fy + d);
       ctx.save();
       ctx.lineJoin = 'round';
@@ -590,8 +591,8 @@ const Renderer = (() => {
       ctx.fillStyle = far ? '#cbd5e1' : '#f1f5f9';
       ctx.beginPath(); ctx.moveTo(X(-0.1), Y(0.03)); ctx.lineTo(X(0.285), Y(0.03)); ctx.quadraticCurveTo(X(0.3), Y(0.05), X(0.275), Y(0.068)); ctx.lineTo(X(-0.1), Y(0.068)); ctx.closePath(); ctx.fill();
       // upper: heel, collar, tongue, laced instep, rounded toe box
-      ctx.fillStyle = far ? '#e2e8f0' : '#ffffff';
-      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = Math.max(1, 0.008 * S);
+      ctx.fillStyle = LIME;
+      ctx.strokeStyle = '#6b8f00'; ctx.lineWidth = Math.max(1, 0.008 * S);
       ctx.beginPath();
       ctx.moveTo(X(-0.1), Y(0.068));
       ctx.lineTo(X(0.275), Y(0.068));
@@ -602,12 +603,14 @@ const Renderer = (() => {
       ctx.quadraticCurveTo(X(-0.12), Y(0.13), X(-0.1), Y(0.068));
       ctx.closePath(); ctx.fill(); ctx.stroke();
       // side stripe in the team colour, and a heel tab
-      ctx.strokeStyle = accent; ctx.lineWidth = Math.max(1.5, 0.026 * S); ctx.lineCap = 'round';
+      ctx.fillStyle = ORANGE;   // toe cap
+      ctx.beginPath(); ctx.moveTo(X(0.2), Y(0.068)); ctx.lineTo(X(0.275), Y(0.068)); ctx.quadraticCurveTo(X(0.3), Y(0.1), X(0.2), Y(0.125)); ctx.quadraticCurveTo(X(0.215), Y(0.095), X(0.2), Y(0.068)); ctx.fill();
+      ctx.strokeStyle = ORANGE; ctx.lineWidth = Math.max(1.5, 0.026 * S); ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(X(-0.06), Y(0.11)); ctx.quadraticCurveTo(X(0.06), Y(0.13), X(0.17), Y(0.095)); ctx.stroke();
       ctx.lineWidth = Math.max(1.5, 0.03 * S);
       ctx.beginPath(); ctx.moveTo(X(-0.1), Y(0.16)); ctx.lineTo(X(-0.1), Y(0.1)); ctx.stroke();
       // laces
-      ctx.strokeStyle = '#64748b'; ctx.lineWidth = Math.max(0.8, 0.007 * S);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(0.8, 0.008 * S);
       ctx.beginPath();
       for (let i = 0; i < 4; i++) { const d = 0.1 + i * 0.045; ctx.moveTo(X(d - 0.02), Y(0.158 - i * 0.012)); ctx.lineTo(X(d + 0.02), Y(0.125 - i * 0.012)); }
       ctx.stroke();
