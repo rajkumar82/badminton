@@ -74,7 +74,7 @@ const Renderer = (() => {
       lod = quality >= 0.84 ? 0 : quality >= 0.67 ? 1 : 2;
       W = canvas.clientWidth; H = canvas.clientHeight;
       canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-      S = Math.min(W / W_WIDTH, H / WORLD_H);
+      S = Math.min(W / W_WIDTH, H / (H < 520 ? 8 : WORLD_H));   // short screens show less sky above the court, so the court is bigger
       OX = (W - W_WIDTH * S) / 2 - W_LEFT * S;
       FY = Math.round(H * 0.8);
       crowdTop = Math.max(0, Math.floor(FY - (TIERS[TIERS.length - 1] + 2.1) * S));

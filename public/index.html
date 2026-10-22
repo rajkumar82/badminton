@@ -115,7 +115,7 @@
     .note { background: rgba(167, 139, 250, 0.14); border: 1px solid rgba(167, 139, 250, 0.4); color: #ede9fe !important; border-radius: 12px; padding: 10px 12px; margin-top: 12px !important; }
     /* start menu */
     .hero { text-align: center; }
-    .hero .logo { width: 64px; height: 64px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45)); }
+    .hero .logo { overflow: visible; width: 64px; height: 64px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45)); }
     .hero h1 { margin: 0; }
     .hero .tag { margin: 4px 0 0; }
 
@@ -165,6 +165,27 @@
       #btnCreate { font-size: 16px; }
       .card { padding: 14px 18px; }
     }
+    /* short screens (a phone held sideways): slim scoreboard and small messages, so the court gets the room */
+    @media (max-height: 520px) {
+      #hud { top: 4px; gap: 3px; }
+      #sb { border-radius: 12px; box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35); }
+      .side { min-width: 0; padding: 2px 12px; gap: 8px; }
+      #side0, #side1 { border-top-width: 3px; }
+      .score { font-size: 24px; min-width: 1.2ch; }
+      .side .name { font-size: 12px; max-width: 90px; }
+      .side .tag { height: 8px; }
+      .mid { display: none; }
+      #gp { font-size: 11px; padding: 2px 10px; }
+      #watchers { font-size: 11px; padding: 1px 9px; }
+      #banner { top: 44px; font-size: 18px; font-weight: 800; text-shadow: none; }
+      #banner, #sub span { background: rgba(10, 13, 34, 0.7); }
+      #banner { left: 50%; right: auto; transform: translateX(-50%); padding: 4px 16px; border-radius: 999px; white-space: nowrap; animation: none; }
+      #sub { top: 44px; font-size: 14px; }
+      #sub span { padding: 4px 12px; }
+      .corner { top: 6px; width: 32px; height: 32px; font-size: 15px; }
+      #menuBtn { left: 6px; }
+      #mute { right: 52px; }
+    }
     @media (max-width: 400px) { .hero h1 { font-size: 36px; } }
     @media (max-height: 420px) { .tbtn { width: 62px; height: 62px; font-size: 22px; } .tbtn.hit { width: 88px; height: 88px; } .tbtn.sm { width: 52px; height: 52px; } #tServe button { padding: 7px 11px; } }
     .spinner { width: 22px; height: 22px; border: 3px solid rgba(255, 255, 255, 0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
@@ -194,6 +215,7 @@
   <div id="touch" hidden>
     <div class="tpad left">
       <button class="tbtn" data-k="left" aria-label="Move left">◀</button>
+      <button class="tbtn" data-k="jump" id="tJump" aria-label="Jump">▲</button>
       <button class="tbtn" data-k="right" aria-label="Move right">▶</button>
     </div>
     <div id="tServe" hidden>
@@ -202,7 +224,6 @@
     </div>
     <div class="tpad right">
       <button class="tbtn sm" data-k="near" id="tDrop" aria-label="Drop shot (hold with hit)">↓<small>drop</small></button>
-      <button class="tbtn sm" data-k="jump" id="tJump" aria-label="Jump">↑<small>jump</small></button>
       <button class="tbtn hit" data-k="hit" aria-label="Hit">HIT</button>
     </div>
   </div>

@@ -449,7 +449,7 @@
     const serving = show && s.ph === 'serve' && s.sv === seat;
     if (serving !== touchServing) {
       touchServing = serving;
-      $('tServe').hidden = !serving; $('tDrop').hidden = serving; $('tJump').hidden = serving;
+      $('tServe').hidden = !serving; $('tDrop').hidden = serving; $('tJump').style.visibility = serving ? 'hidden' : '';   // no jumping while serving
     }
     syncServeKeys();
   }
