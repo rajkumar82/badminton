@@ -631,9 +631,11 @@ const Renderer = (() => {
       const run = Math.min(1, Math.abs(vx) / 6);
       const cycle = x * 3.3;
       const air = y > 0.02;
-      const lean = Math.max(-0.14, Math.min(0.14, vx * 0.022)) + (swing >= 0 ? face * 0.04 : 0);
-      const hipY = y + 0.92 - (air ? 0 : Math.abs(Math.sin(cycle)) * 0.03 * run);
-      const hipX = x - lean * 0.2;
+      // a low shuttle (a lift) is picked up in a crouching lunge: knees bend, hips drop and the body leans in
+      const crouch = !air && swing >= 0 && shot === 'lift' ? Math.pow(Math.sin(Math.min(1, swing / 0.34) * Math.PI), 0.6) : 0;
+      const lean = Math.max(-0.14, Math.min(0.14, vx * 0.022)) + (swing >= 0 ? face * 0.04 : 0) + face * 0.14 * crouch;
+      const hipY = y + 0.92 - (air ? 0 : Math.abs(Math.sin(cycle)) * 0.03 * run) - 0.3 * crouch;
+      const hipX = x - lean * 0.2 + face * 0.1 * crouch;
       const SKIN = idx === 0 ? '#f2c7a0' : '#c98f62', SKIN_D = idx === 0 ? '#d9a67d' : '#a9724a';
       const SHORTS = idx === 0 ? '#f8fafc' : '#1f2937';
       // legs: bare skin, white socks, trainers
@@ -648,7 +650,7 @@ const Renderer = (() => {
       legs.forEach(([fx, fy], k) => {                      // k 0 is the far leg (a shade darker), drawn first
         const skin = k ? SKIN : SKIN_D;
         const ax0 = fx, ay0 = fy + 0.14;                    // ankle
-        const kx = (hipX + ax0) / 2 + face * 0.1, ky = (hipY + ay0) / 2 + 0.05;
+        const kx = (hipX + ax0) / 2 + face * (0.1 + 0.2 * crouch), ky = (hipY + ay0) / 2 + 0.05;
         limb(hipX, hipY, kx, ky, 0.17, skin);               // thigh
         limb(kx, ky, ax0, ay0, 0.12, skin);                 // calf
         ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(sx(kx), sy(ky), 0.07 * S, 0, 6.3); ctx.fill();   // knee
@@ -749,19 +751,36 @@ const Renderer = (() => {
       ctx.save();
       ctx.translate(sx(x), sy(y));
       ctx.rotate(-ang);
-      const k = S * 1.7;
-      // skirt of feathers (behind the cork)
-      const grad = ctx.createLinearGradient(-0.26 * k, 0, 0, 0);
-      grad.addColorStop(0, 'rgba(255,255,255,0.95)'); grad.addColorStop(1, 'rgba(225,232,245,0.95)');
+      const k = S * 1.35;
+      // the skirt: a cone of feathers (local -x is back from the cork), halfwidth growing from the cork to the rim
+      const hw = (d) => 0.05 + (d - 0.02) * 0.27;          // halfwidth at distance d behind the cork
+      const grad = ctx.createLinearGradient(-0.27 * k, 0, 0, 0);
+      grad.addColorStop(0, 'rgba(255,255,255,0.97)'); grad.addColorStop(1, 'rgba(214,224,242,0.97)');
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.moveTo(-0.01 * k, -0.045 * k); ctx.lineTo(-0.27 * k, -0.115 * k); ctx.quadraticCurveTo(-0.3 * k, 0, -0.27 * k, 0.115 * k); ctx.lineTo(-0.01 * k, 0.045 * k); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(120,135,165,0.8)'; ctx.lineWidth = 1;
-      for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(-0.02 * k, i * 0.013 * k); ctx.lineTo(-0.27 * k, i * 0.037 * k); ctx.stroke(); }
-      ctx.beginPath(); ctx.ellipse(-0.27 * k, 0, 0.012 * k, 0.115 * k, 0, 0, 6.3); ctx.strokeStyle = 'rgba(80,95,130,0.9)'; ctx.lineWidth = 0.014 * k; ctx.stroke();
+      ctx.moveTo(-0.02 * k, -0.05 * k); ctx.lineTo(-0.27 * k, -hw(0.27) * k); ctx.quadraticCurveTo(-0.3 * k, 0, -0.27 * k, hw(0.27) * k); ctx.lineTo(-0.02 * k, 0.05 * k); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(100,116,150,0.9)'; ctx.lineWidth = Math.max(0.7, 0.008 * k); ctx.stroke();
+      // ribs along the skirt, and the little square holes between them
+      ctx.strokeStyle = 'rgba(120,135,170,0.75)'; ctx.lineWidth = Math.max(0.6, 0.007 * k);
+      ctx.beginPath();
+      for (let i = -2; i <= 2; i++) { ctx.moveTo(-0.02 * k, i * 0.025 * k); ctx.lineTo(-0.27 * k, i * hw(0.27) / 2 * k); }
+      ctx.stroke();
+      const hs = Math.max(1.4, 0.026 * k);                  // hole size in pixels, never too small to see
+      ctx.fillStyle = 'rgba(40,52,100,0.8)';
+      for (let d = 0.07; d < 0.26; d += 0.043) {
+        const w = hw(d), n = Math.max(2, Math.floor(w * 2 / 0.052));
+        for (let j = 0; j < n; j++) {
+          const yy = (-w + (j + 0.5) * (2 * w / n)) * k * 0.82;
+          ctx.fillRect(-d * k - hs / 2, yy - hs / 2, hs, hs);
+        }
+      }
+      // rim at the open end
+      ctx.beginPath(); ctx.ellipse(-0.27 * k, 0, 0.012 * k, hw(0.27) * k, 0, 0, 6.3); ctx.strokeStyle = 'rgba(70,85,125,0.95)'; ctx.lineWidth = Math.max(1, 0.014 * k); ctx.stroke();
       // cork
-      ctx.fillStyle = '#e9c88f'; ctx.beginPath(); ctx.arc(0.01 * k, 0, 0.055 * k, 0, 6.3); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.arc(0.025 * k, -0.02 * k, 0.018 * k, 0, 6.3); ctx.fill();
+      const cg = ctx.createRadialGradient(0.005 * k, -0.02 * k, 0.005 * k, 0.01 * k, 0, 0.06 * k);
+      cg.addColorStop(0, '#fff1cf'); cg.addColorStop(1, '#d9a95c');
+      ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(0.01 * k, 0, 0.055 * k, 0, 6.3); ctx.fill();
+      ctx.strokeStyle = 'rgba(120,80,30,0.5)'; ctx.lineWidth = 1; ctx.stroke();
       ctx.restore();
     }
 

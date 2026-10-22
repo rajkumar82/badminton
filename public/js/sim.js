@@ -203,7 +203,8 @@
     }
 
     hitCentre(p) {
-      return { x: p.x + p.face * 0.45, y: p.y + 1.6 };
+      // a low shuttle is met with a crouching lunge: the racket reaches much lower
+      return { x: p.x + p.face * 0.45, y: p.y + (this.shuttle.y < 1.0 ? 1.0 : 1.6) };
     }
 
     tryHit(p) {

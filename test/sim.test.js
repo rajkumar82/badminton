@@ -253,7 +253,13 @@ test('holding down with Space drops the shuttle', () => {
 
 test('a smash coming down fast can be dug out from further away than a normal shuttle', () => {
   // 1.5 m from the racket centre: beyond the normal 1.2 m reach, inside the extended one
-  const at = (extra) => { const g = rallyAt(Object.assign({ x: 3.45, y: 0.1 }, extra), { x: 3.0 }); g.players[0].swing = 0.1; g.tryHit(g.players[0]); return g.lastHitter === 0; };
+  const at = (extra) => { const g = rallyAt(Object.assign({ x: 4.95, y: 0.9 }, extra), { x: 3.0 }); g.players[0].swing = 0.1; g.tryHit(g.players[0]); return g.lastHitter === 0; };
   assert.strictEqual(at({ vx: -4, vy: -9, speed: 9.8 }), true, 'fast and steep: defended');
   assert.strictEqual(at({ vx: -1, vy: -2, speed: 2.2 }), false, 'slow: out of reach');
+});
+
+test('a low shuttle can be picked up in a lunge: the racket reaches down towards the floor', () => {
+  const g = rallyAt({ x: 3.5, y: 0.35 }, { x: 3.0 });
+  g.players[0].swing = 0.1; g.tryHit(g.players[0]);
+  assert.strictEqual(g.lastHitter, 0);
 });
