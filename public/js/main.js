@@ -22,6 +22,11 @@
   const RETRY_MS = 60000;      // how long we keep trying to reach the server, and how long the server holds a seat
   const keys = { left: false, right: false, jump: false, smash: false, drop: false, normal: false, far: false, near: false, hit: false };
 
+  // phones and tablets: on-screen buttons while playing (?touch=1 forces them on, for trying it on a computer)
+  const isTouch = matchMedia('(pointer: coarse)').matches || new URLSearchParams(location.search).get('touch') === '1';
+  document.body.classList.toggle('touch', isTouch);
+  const buzz = (pattern) => { if (isTouch && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) { /* not supported (iPhone) */ } } };
+
   const inviteCode = (new URLSearchParams(location.search).get('g') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
 
   // ---------- panels ----------
@@ -278,7 +283,7 @@
     const sh = snap ? snap.sh : [6.7];
     renderer.onEvents(events, { shuttleX: sh[0] });
     for (const e of events) {
-      if (e.k === 'hit') Sound.hit(e.t, e.p, e.x);
+      if (e.k === 'hit') { Sound.hit(e.t, e.p, e.x); if (e.i === seat) buzz(e.t === 'smash' ? 45 : e.t === 'drop' ? 10 : 18); }
       else if (e.k === 'swing') Sound.swing(e.x);
       else if (e.k === 'aim') { if (e.i === seat) Sound.blip(); }
       else if (e.k === 'net') Sound.net(e.p, e.x);
@@ -287,7 +292,7 @@
       else if (e.k === 'squeak') Sound.squeak(e.x);
       else if (e.k === 'jump') Sound.jump(e.x);
       else if (e.k === 'land') Sound.land(e.x);
-      else if (e.k === 'point') Sound.point(seat < 0 ? true : e.w === seat);
+      else if (e.k === 'point') { Sound.point(seat < 0 ? true : e.w === seat); if (seat >= 0) buzz(e.w === seat ? [25, 40, 25] : 70); }
       else if (e.k === 'over') Sound.fanfare(seat < 0 ? true : e.w === seat);
     }
   }
@@ -341,7 +346,7 @@
     }
     if (s.ph === 'serve') {
       banner.hidden = true; sub.hidden = false;
-      sub.textContent = s.sv === seat ? 'Your serve: ↑ ↓ how far, hold S (flat) or D (high), then Space. It lands somewhere near the ring' : `${names[s.sv]} to serve`;
+      sub.textContent = s.sv === seat ? (isTouch ? 'Your serve: pick how far and how high, then tap HIT. It lands somewhere near the ring' : 'Your serve: ↑ ↓ how far, hold S (flat) or D (high), then Space. It lands somewhere near the ring') : `${names[s.sv]} to serve`;
     } else if (s.ph === 'point') {
       banner.hidden = false; sub.hidden = true;
       banner.textContent = `${names[s.sv]} scores!`;
@@ -389,6 +394,66 @@
     return out;
   }
 
+  // ---------- touch controls ----------
+  let serveStyle = 'mid';        // flat | mid | high: how the serve is struck, chosen with the chips
+  let touchShown = false, touchServing = false;
+  function pulse(name) { keys[name] = true; sendInput(); setTimeout(() => { keys[name] = false; sendInput(); }, 70); }
+  function holdButton(el) {
+    const name = el.dataset.k;
+    const set = (down) => {
+      if (keys[name] === down) return;
+      keys[name] = down; el.classList.toggle('down', down);
+      if (down && name === 'hit') buzz(10);
+      sendInput();
+    };
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); Sound.unlock(); try { el.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ } set(true); });
+    for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(t, () => set(false));
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  if (isTouch) {
+    for (const el of document.querySelectorAll('#touch [data-k]')) holdButton(el);
+    for (const el of document.querySelectorAll('#tServe [data-pulse]')) {
+      el.addEventListener('pointerdown', (e) => { e.preventDefault(); Sound.unlock(); pulse(el.dataset.pulse); });
+    }
+    for (const el of document.querySelectorAll('#tServe [data-style]')) {
+      el.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); serveStyle = el.dataset.style;
+        for (const b of document.querySelectorAll('#tServe [data-style]')) b.classList.toggle('on', b === el);
+        syncServeKeys();
+      });
+    }
+    // iOS Safari ignores user-scalable=no: stop pinch and double-tap zoom here too
+    for (const t of ['gesturestart', 'gesturechange']) document.addEventListener(t, (e) => e.preventDefault());
+    document.addEventListener('dblclick', (e) => e.preventDefault());
+  }
+  // the serve is struck flat (S held) or high (D held); on a phone the chips stand in for those keys while serving
+  function syncServeKeys() {
+    const smash = touchServing && serveStyle === 'flat', drop = touchServing && serveStyle === 'high';
+    if (keys.smash !== smash || keys.drop !== drop) { keys.smash = smash; keys.drop = drop; sendInput(); }
+  }
+  // keep the screen on while playing (Android, and iOS 16.4 and later); asked again when the page comes back to the front
+  let wake = null;
+  function keepAwake() {
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then((l) => { wake = l; }).catch(() => {}); } catch (e) { /* ignore */ }
+  }
+  document.addEventListener('visibilitychange', () => { if (isTouch && document.visibilityState === 'visible' && document.body.classList.contains('playing')) keepAwake(); });
+  function updateTouch(s) {
+    const playing = (mode === 'local' || mode === 'online') && seat >= 0;
+    const show = playing && !!s && $('overlay').classList.contains('hidden');
+    if (playing && !document.body.classList.contains('playing')) keepAwake();
+    document.body.classList.toggle('playing', playing);
+    if (show !== touchShown) {
+      touchShown = show; $('touch').hidden = !show;
+      if (!show) for (const el of document.querySelectorAll('#touch .down')) el.classList.remove('down');
+    }
+    const serving = show && s.ph === 'serve' && s.sv === seat;
+    if (serving !== touchServing) {
+      touchServing = serving;
+      $('tServe').hidden = !serving; $('tDrop').hidden = serving; $('tJump').hidden = serving;
+    }
+    syncServeKeys();
+  }
+
   // ---------- main loop ----------
   function frame(now) {
     const dt = Math.min(0.1, (now - lastFrame) / 1000); lastFrame = now;
@@ -405,6 +470,7 @@
     } else if (mode === 'local' && game) view = game.snapshot(); // paused behind a panel: keep drawing the same scene
     else if (mode === 'online') view = interpolated();
     if (view) updateHud(view);
+    if (isTouch) updateTouch(view);
     const simMs = performance.now() - frameStart;
     if (mode === 'menu' || mode === 'connecting') renderer.draw(demoScene(dt), { names: DEMO_NAMES, seat: -1 });
     else renderer.draw(view, { names, seat });

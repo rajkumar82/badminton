@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Badminton – Free Online 2-Player Game with Real Shuttlecock Physics | nocod.dev</title>
   <!-- seo:start -->
   <meta name="description" content="Play badminton online with a friend: share a link, rally with realistic shuttlecock physics, first to 15 wins. Or play the computer. Free, no sign-up.">
@@ -132,6 +132,41 @@
     #btnCreate { font-size: 18px; box-shadow: 0 0 26px rgba(124, 77, 255, 0.7); animation: glow 2s ease-in-out infinite; }
     @keyframes glow { 50% { box-shadow: 0 0 40px rgba(124, 77, 255, 1); } }
     .stack .secondary { background: rgba(14, 8, 40, 0.8); border-color: rgba(196, 181, 253, 0.55); }
+    /* touch controls: shown on phones and tablets while you are playing */
+    html, body { overscroll-behavior: none; touch-action: manipulation; }
+    #stage, #touch { touch-action: none; }
+    #touch { position: fixed; inset: 0; pointer-events: none; z-index: 3; padding: 0 max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
+    #touch .tpad { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 12px; pointer-events: auto; }
+    #touch .tpad.left { left: max(14px, env(safe-area-inset-left)); }
+    #touch .tpad.right { right: max(14px, env(safe-area-inset-right)); }
+    .tbtn { width: 74px; height: 74px; padding: 0; border-radius: 50%; font-size: 26px; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #fff; background: rgba(35, 26, 112, 0.62); border: 2px solid rgba(196, 181, 253, 0.55); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); touch-action: none; -webkit-user-select: none; user-select: none; }
+    .tbtn small { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.85; }
+    .tbtn.down { background: rgba(124, 77, 255, 0.85); transform: scale(0.94); filter: none; }
+    .tbtn.hit { width: 104px; height: 104px; font-size: 22px; font-weight: 900; letter-spacing: 0.06em; background: linear-gradient(135deg, rgba(67, 97, 238, 0.85), rgba(124, 77, 255, 0.9)); border-color: rgba(255, 255, 255, 0.7); }
+    .tbtn.hit.down { background: #fde047; color: #1f2937; }
+    .tbtn.sm { width: 60px; height: 60px; font-size: 20px; }
+    #tServe { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: auto; }
+    #tServe .grp { display: flex; gap: 8px; align-items: center; background: rgba(14, 8, 40, 0.72); border: 1px solid rgba(190, 170, 255, 0.3); border-radius: 999px; padding: 5px 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
+    #tServe button { font-size: 14px; padding: 9px 13px; border-radius: 999px; background: var(--card2); border: 1px solid rgba(190, 170, 255, 0.25); touch-action: none; }
+    #tServe button.on { background: var(--brand); border-color: transparent; }
+    #rotate { display: none; position: fixed; inset: 0; z-index: 4; align-items: center; justify-content: center; flex-direction: column; gap: 14px; background: rgba(10, 6, 32, 0.9); color: var(--text); font-size: 20px; font-weight: 700; text-align: center; padding: 24px; }
+    #rotate .phone { font-size: 56px; animation: tilt 1.8s ease-in-out infinite; }
+    @keyframes tilt { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+    body.touch #help { display: none; }
+    @media (orientation: portrait) { body.touch.playing #rotate { display: flex; } }
+    /* a phone held sideways is short: the start menu goes two columns */
+    @media (max-height: 520px) and (orientation: landscape) {
+      #pMenu { width: min(660px, 100%); display: grid; grid-template-columns: 1fr 1fr; gap: 6px 26px; align-items: center; }
+      .hero .logo { width: 56px; height: 56px; }
+      .hero h1 { font-size: 32px; }
+      .hero .tag { margin-bottom: 0; }
+      .stack { margin-top: 8px; gap: 8px; }
+      .stack button, .stack select { padding-top: 10px; padding-bottom: 10px; }
+      #btnCreate { font-size: 16px; }
+      .card { padding: 14px 18px; }
+    }
+    @media (max-width: 400px) { .hero h1 { font-size: 36px; } }
+    @media (max-height: 420px) { .tbtn { width: 62px; height: 62px; font-size: 22px; } .tbtn.hit { width: 88px; height: 88px; } .tbtn.sm { width: 52px; height: 52px; } #tServe button { padding: 7px 11px; } }
     .spinner { width: 22px; height: 22px; border: 3px solid rgba(255, 255, 255, 0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #msgButtons { display: grid; gap: 10px; margin-top: 18px; }
@@ -155,6 +190,23 @@
   <div id="help"><kbd>←</kbd><kbd>→</kbd> move &nbsp; <kbd>↑</kbd> jump (hit it high for a smash) &nbsp; <kbd>Space</kbd> hit &nbsp; <kbd>↓</kbd> + <kbd>Space</kbd> drop</div>
   <button class="corner" id="menuBtn" title="Leave game" aria-label="Leave game">✕</button>
   <button class="corner" id="mute" title="Sound on/off" aria-label="Sound on or off">🔊</button>
+
+  <div id="touch" hidden>
+    <div class="tpad left">
+      <button class="tbtn" data-k="left" aria-label="Move left">◀</button>
+      <button class="tbtn" data-k="right" aria-label="Move right">▶</button>
+    </div>
+    <div id="tServe" hidden>
+      <div class="grp">Aim <button data-pulse="near">Nearer</button><button data-pulse="far">Farther</button></div>
+      <div class="grp"><button data-style="flat">Flat</button><button data-style="mid" class="on">Normal</button><button data-style="high">High</button></div>
+    </div>
+    <div class="tpad right">
+      <button class="tbtn sm" data-k="near" id="tDrop" aria-label="Drop shot (hold with hit)">↓<small>drop</small></button>
+      <button class="tbtn sm" data-k="jump" id="tJump" aria-label="Jump">↑<small>jump</small></button>
+      <button class="tbtn hit" data-k="hit" aria-label="Hit">HIT</button>
+    </div>
+  </div>
+  <div id="rotate"><div class="phone">📱</div>Turn your phone sideways to play</div>
 
   <div id="overlay">
     <div class="card" id="pMenu">
