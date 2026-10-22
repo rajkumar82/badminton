@@ -537,6 +537,48 @@ const Renderer = (() => {
       ctx.beginPath(); ctx.moveTo(sx(x1), sy(y1)); ctx.lineTo(sx(x2), sy(y2)); ctx.stroke();
     }
 
+    // The racket, drawn in its own frame: head centre at the origin, local +y running back along the arm to the grip.
+    function drawRacket(hc, ux, uy, col) {
+      ctx.save();
+      ctx.translate(sx(hc[0]), sy(hc[1]));
+      ctx.rotate(Math.atan2(-uy, ux) + Math.PI / 2);
+      const u = S;                          // one metre
+      const RX = 0.155 * u, RY = 0.225 * u;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      // grip with tape wrap, from the end of the shaft to the hand
+      ctx.strokeStyle = '#1f2937'; ctx.lineWidth = 0.058 * u;
+      ctx.beginPath(); ctx.moveTo(0, 0.34 * u); ctx.lineTo(0, 0.58 * u); ctx.stroke();
+      ctx.strokeStyle = col.band; ctx.lineWidth = Math.max(1, 0.012 * u);
+      for (let y = 0.35; y < 0.57; y += 0.045) { ctx.beginPath(); ctx.moveTo(-0.028 * u, y * u); ctx.lineTo(0.028 * u, (y + 0.03) * u); ctx.stroke(); }
+      ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(0, 0.585 * u, 0.034 * u, 0, 6.3); ctx.fill();   // butt cap
+      // shaft and throat (the two arms of the Y)
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = Math.max(1.5, 0.026 * u);
+      ctx.beginPath(); ctx.moveTo(0, 0.34 * u); ctx.lineTo(0, 0.27 * u); ctx.stroke();
+      ctx.lineWidth = Math.max(1.5, 0.03 * u); ctx.strokeStyle = col.dark;
+      ctx.beginPath(); ctx.moveTo(-0.075 * u, 0.205 * u); ctx.lineTo(0, 0.275 * u); ctx.lineTo(0.075 * u, 0.205 * u); ctx.stroke();
+      // string bed, clipped to the head: a fine mesh over a faint tint
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(0, 0, RX, RY, 0, 0, 6.3); ctx.clip();
+      ctx.fillStyle = 'rgba(226, 238, 255, 0.12)'; ctx.fillRect(-RX, -RY, RX * 2, RY * 2);
+      ctx.strokeStyle = 'rgba(235, 242, 255, 0.55)'; ctx.lineWidth = Math.max(0.6, 0.006 * u);
+      ctx.beginPath();
+      for (let i = -5; i <= 5; i++) { const x = i * 0.028 * u; ctx.moveTo(x, -RY); ctx.lineTo(x, RY); }
+      for (let i = -8; i <= 8; i++) { const y = i * 0.027 * u; ctx.moveTo(-RX, y); ctx.lineTo(RX, y); }
+      ctx.stroke();
+      ctx.restore();
+      // frame: dark outline, team colour, then a light highlight on the upper-left edge
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)'; ctx.lineWidth = 0.066 * u;
+      ctx.beginPath(); ctx.ellipse(0, 0, RX, RY, 0, 0, 6.3); ctx.stroke();
+      ctx.strokeStyle = col.main; ctx.lineWidth = 0.046 * u;
+      ctx.beginPath(); ctx.ellipse(0, 0, RX, RY, 0, 0, 6.3); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'; ctx.lineWidth = Math.max(1, 0.012 * u);
+      ctx.beginPath(); ctx.ellipse(0, 0, RX - 0.004 * u, RY - 0.004 * u, 0, Math.PI * 1.05, Math.PI * 1.55); ctx.stroke();
+      // bumper at the tip of the head
+      ctx.strokeStyle = col.band; ctx.lineWidth = 0.05 * u;
+      ctx.beginPath(); ctx.ellipse(0, 0, RX, RY, 0, Math.PI * 1.43, Math.PI * 1.57); ctx.stroke();
+      ctx.restore();
+    }
+
     function drawPlayer(p, idx, name, mine, holding) {
       const [x, y, vx, vy, swing, shot] = p;
       const face = idx === 0 ? 1 : -1;
@@ -580,17 +622,8 @@ const Renderer = (() => {
       limb(ax, ay, hand[0], hand[1], 0.12, '#f2c7a0');
       limb(ax, ay, (ax + hand[0]) / 2, (ay + hand[1]) / 2, 0.15, col.main);
       const handle = [hand[0] + ux * 0.2, hand[1] + uy * 0.2];
-      limb(hand[0], hand[1], handle[0], handle[1], 0.035, '#111827');
       const hc = [handle[0] + ux * 0.34, handle[1] + uy * 0.34];
-      // the head of the racket, tilted along the arm direction
-      ctx.save();
-      ctx.translate(sx(hc[0]), sy(hc[1]));
-      ctx.rotate(Math.atan2(-uy, ux) + Math.PI / 2);
-      ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 0.035 * S;
-      ctx.beginPath(); ctx.ellipse(0, 0, 0.15 * S, 0.22 * S, 0, 0, 6.3); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1;
-      for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * 0.05 * S, -0.2 * S); ctx.lineTo(i * 0.05 * S, 0.2 * S); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-0.14 * S, i * 0.07 * S); ctx.lineTo(0.14 * S, i * 0.07 * S); ctx.stroke(); }
-      ctx.restore();
+      drawRacket(hc, ux, uy, col);
       // a swoosh arc while the racket is moving fast
       if (swing > 0.06 && swing < 0.26) {
         ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - Math.abs(swing - 0.15) / 0.12)})`; ctx.lineWidth = 0.05 * S;
