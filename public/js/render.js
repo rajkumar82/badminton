@@ -614,6 +614,22 @@ const Renderer = (() => {
       ctx.fillStyle = mine ? '#fde68a' : '#e2e8f0'; ctx.fillText(label, sx(x), ty);
     }
 
+    // Before the serve the shuttle is held along the dotted preview arc: feathers pointing the way it will fly, cork at the back.
+    const heldCache = { key: '', ang: 0 };
+    function heldAngle(snap) {
+      const [, targetX, height] = snap.sa;
+      const face = snap.sv === 0 ? 1 : -1, pl = snap.p[snap.sv];
+      const x0 = pl[0] + face * 0.55, y0 = pl[1] + 1.15;
+      const key = `${x0.toFixed(2)}|${y0.toFixed(2)}|${face}|${targetX}|${height}`;
+      if (heldCache.key !== key) {
+        heldCache.key = key;
+        const pts = Sim.serveTrajectory(x0, y0, face, targetX, height);
+        const q = pts[Math.min(4, pts.length - 1)];
+        heldCache.ang = pts.length > 1 ? Math.atan2(q.y - pts[0].y, q.x - pts[0].x) + Math.PI : 0;
+      }
+      return heldCache.ang;
+    }
+
     function drawShuttle(sh) {
       const [x, y, , , ang] = sh;
       ctx.save();
@@ -742,7 +758,7 @@ const Renderer = (() => {
           while (trail.length > 26) trail.shift();
         } else trail.length = 0;
         drawTrail();
-        drawShuttle(sh);
+        drawShuttle(snap.ph === 'serve' && snap.sa ? [sh[0], sh[1], sh[2], sh[3], heldAngle(snap)] : sh);
         // marker when the shuttle is off the top of the screen
         if (sh[1] > (FY / S) - 0.2) {
           ctx.fillStyle = 'rgba(255,255,255,0.85)';
