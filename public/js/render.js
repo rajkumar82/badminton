@@ -543,7 +543,7 @@ const Renderer = (() => {
       ctx.translate(sx(hc[0]), sy(hc[1]));
       ctx.rotate(Math.atan2(-uy, ux) + Math.PI / 2);
       const u = S;                          // one metre
-      const RX = 0.155 * u, RY = 0.255 * u, L = 0.52;   // L: head centre to the start of the grip
+      const RX = 0.155 * u, RY = 0.255 * u, L = 0.74;   // L: head centre to the start of the grip
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       // grip with tape wrap, from the end of the shaft to the hand
       ctx.strokeStyle = '#1f2937'; ctx.lineWidth = 0.058 * u;
@@ -622,14 +622,14 @@ const Renderer = (() => {
       limb(ax, ay, hand[0], hand[1], 0.12, '#f2c7a0');
       limb(ax, ay, (ax + hand[0]) / 2, (ay + hand[1]) / 2, 0.15, col.main);
       const handle = [hand[0] + ux * 0.2, hand[1] + uy * 0.2];
-      const hc = [handle[0] + ux * 0.52, handle[1] + uy * 0.52];
+      const hc = [handle[0] + ux * 0.74, handle[1] + uy * 0.74];
       drawRacket(hc, ux, uy, col);
       // a swoosh arc while the racket is moving fast
       if (swing > 0.06 && swing < 0.26) {
         ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - Math.abs(swing - 0.15) / 0.12)})`; ctx.lineWidth = 0.05 * S;
         ctx.beginPath();
         const a0 = armAngle(shot, swing - 0.05) * Math.PI / 180;
-        const r = 1.05;
+        const r = 1.3;
         for (let i = 0; i <= 6; i++) {
           const a = a0 + (ang - a0) * (i / 6);
           const px = ax + face * Math.sin(a) * r, py = ay + Math.cos(a) * r;
