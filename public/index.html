@@ -28,6 +28,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Badminton">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="/brand.css">
   <style>
     :root {
       color-scheme: dark;
@@ -37,7 +38,7 @@
       --text: #f3efff;
       --muted: #b0a5e8;
       --accent: #a78bfa;
-      --brand: linear-gradient(135deg, #4361ee, #7c4dff);
+      --brand: var(--grad);
       --blue: #00d0ff;
       --orange: #ff7a00;
     }
@@ -143,7 +144,7 @@
     .tbtn { width: 74px; height: 74px; padding: 0; border-radius: 50%; font-size: 26px; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #fff; background: rgba(35, 26, 112, 0.62); border: 2px solid rgba(196, 181, 253, 0.55); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); touch-action: none; -webkit-user-select: none; user-select: none; }
     .tbtn small { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.85; }
     .tbtn.down { background: rgba(124, 77, 255, 0.85); transform: scale(0.94); filter: none; }
-    .tbtn.hit { width: 104px; height: 104px; font-size: 22px; font-weight: 900; letter-spacing: 0.06em; background: linear-gradient(135deg, rgba(67, 97, 238, 0.85), rgba(124, 77, 255, 0.9)); border-color: rgba(255, 255, 255, 0.7); }
+    .tbtn.hit { width: 104px; height: 104px; font-size: 22px; font-weight: 900; letter-spacing: 0.06em; background: linear-gradient(135deg, rgba(91, 75, 255, 0.9), rgba(58, 43, 208, 0.92)); border-color: rgba(255, 255, 255, 0.7); }
     .tbtn.hit.down { background: #fde047; color: #1f2937; }
     .tbtn.sm { width: 60px; height: 60px; font-size: 20px; }
     #tServe { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: auto; }
@@ -290,5 +291,6 @@
   <script src="/js/render.js"></script>
   <script src="/js/main.js"></script>
   <script src="/install.js" defer></script>
+  <script src="/ping.js" data-app="badminton" data-version="1" data-endpoint="https://feedback.nocod.dev/api/ping" defer></script>
 </body>
 </html>
