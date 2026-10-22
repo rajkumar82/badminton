@@ -94,10 +94,10 @@ two seconds. Nothing is shown. From that each player is adjusted on their own:
 
 ## Deploying
 
-Live at https://badminton.nocod.dev (Cloud Run service `badminton` in project `nocode-512210`, `asia-south1`, routed by
+Live at https://badminton.nocod.dev (Cloud Run service `badminton` in project `nocode-512210`, `asia-southeast1` (Singapore), routed by
 the Cloudflare Worker in `nocode/worker`).
 
-    gcloud run deploy badminton --source . --project=nocode-512210 --region=asia-south1 --allow-unauthenticated       --max-instances=1 --min-instances=0 --concurrency=1000 --timeout=3600 --memory=512Mi --cpu=1
+    gcloud run deploy badminton --source . --project=nocode-512210 --region=asia-southeast1 --allow-unauthenticated       --max-instances=1 --min-instances=0 --concurrency=1000 --timeout=3600 --memory=512Mi --cpu=1
 
 - **One instance only.** Rooms live in the memory of one server process, so the service must run a single instance
   (`--max-instances=1`) or two players could land on different instances. When it scales to zero (no connections) there
