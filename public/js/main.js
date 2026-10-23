@@ -508,7 +508,6 @@
   // A thumb on the left part of the screen acts as a stick: dragging away from where it landed holds left, right,
   // up (jump, or more serve strength) or down (less serve strength; with HIT held, a drop shot).
   let swipeOn = true, swipeServing = false, swipeId = null, swipeOrigin = null;
-  try { swipeOn = localStorage.getItem('bm-swipe') !== '0'; } catch (e) { /* storage blocked */ }
   const SWIPE_DEAD = 6, SWIPE_DEAD_Y = 16, SWIPE_DEAD_UP = 34, SWIPE_CATCHUP = 0.18;   // px, px, px, seconds
   let swipeThumb = null, swipeTrailX = 0, swipeRaf = 0, swipeLast = 0;
   function swipeLocal(e) {   // pointer position in the app's own axes (the app is turned a quarter turn on an upright phone)
@@ -559,11 +558,6 @@
     for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(t, (e) => { if (e.pointerId === swipeId) swipeEnd(); });
     pad.addEventListener('contextmenu', (e) => e.preventDefault());
   })();
-  if (isTouch) window.pwaMenuItems = (window.pwaMenuItems || []).concat([{
-    get label() { return swipeOn ? 'Controls: swipe (tap for buttons)' : 'Controls: buttons (tap for swipe)'; },
-    onClick: () => { swipeOn = !swipeOn; try { localStorage.setItem('bm-swipe', swipeOn ? '1' : '0'); } catch (e) { /* ignore */ } swipeEnd(); },
-  }]);
-
   // ---------- main loop ----------
   function frame(now) {
     const dt = Math.min(0.1, (now - lastFrame) / 1000); lastFrame = now;
