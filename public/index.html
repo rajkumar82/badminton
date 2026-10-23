@@ -3,22 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Badminton – Free Online 2-Player Game with Real Shuttlecock Physics | nocod.dev</title>
+  <title>Badminton – Free Online 2-Player Game | nocod.dev</title>
   <!-- seo:start -->
   <meta name="description" content="Play badminton online with a friend: share a link, rally with realistic shuttlecock physics, first to 15 wins. Or play the computer. Free, no sign-up.">
   <link rel="canonical" href="https://badminton.nocod.dev/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="nocod.dev">
-  <meta property="og:title" content="Badminton – Free Online 2-Player Game with Real Shuttlecock Physics | nocod.dev">
+  <meta property="og:title" content="Badminton – Free Online 2-Player Game | nocod.dev">
   <meta property="og:description" content="Play badminton online with a friend: share a link, rally with realistic shuttlecock physics, first to 15 wins. Or play the computer. Free, no sign-up.">
   <meta property="og:url" content="https://badminton.nocod.dev/">
-  <meta property="og:image" content="https://badminton.nocod.dev/og-image.png">
+  <meta property="og:image" content="https://badminton.nocod.dev/og-image.png?v=2">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Badminton – Free Online 2-Player Game with Real Shuttlecock Physics | nocod.dev">
+  <meta name="twitter:title" content="Badminton – Free Online 2-Player Game | nocod.dev">
   <meta name="twitter:description" content="Play badminton online with a friend: share a link, rally with realistic shuttlecock physics, first to 15 wins. Or play the computer. Free, no sign-up.">
-  <meta name="twitter:image" content="https://badminton.nocod.dev/og-image.png">
+  <meta name="twitter:image" content="https://badminton.nocod.dev/og-image.png?v=2">
   <!-- seo:end -->
   <meta name="theme-color" content="#0e0828">
   <link rel="icon" type="image/png" href="icon-192.png">
@@ -111,6 +111,9 @@
     .stack { display: grid; gap: 10px; margin-top: 14px; }
     .row { display: flex; gap: 8px; }
     .row select { flex: 0 0 120px; }
+    .seg { display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(14, 8, 40, 0.8); border: 1px solid rgba(196, 181, 253, 0.35); }
+    .stack .seg button { flex: 1; padding: 9px 6px; border-radius: 999px; font-size: 14px; font-weight: 700; color: rgba(226, 220, 255, 0.75); background: transparent; box-shadow: none; }
+    .stack .seg button.on { color: #fff; background: var(--grad); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
     .row button { flex: 1; }
     .err { color: #fca5a5; font-size: 13px; margin: 6px 0 0; }
     .note { background: rgba(167, 139, 250, 0.14); border: 1px solid rgba(167, 139, 250, 0.4); color: #ede9fe !important; border-radius: 12px; padding: 10px 12px; margin-top: 12px !important; }
@@ -139,12 +142,24 @@
     #touch { position: fixed; inset: 0; pointer-events: none; z-index: 3; padding: 0 max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
     #touch .tpad { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 12px; pointer-events: auto; }
     #touch .tpad.left { left: max(14px, env(safe-area-inset-left)); gap: 8px; }
-    #touch #tJump { margin-bottom: 56px; }   /* the up arrow sits a little higher, between left and right */
+    /* one low row (left, right, up, down) that sits in the floor strip below the players instead of covering them */
+    #touch .tpad.left { bottom: max(8px, env(safe-area-inset-bottom)); }
+    #touch .tpad.left .tbtn { width: 58px; height: 58px; font-size: 22px; }
+    #touch .vcol { display: flex; gap: 8px; margin-left: 16px; }
     #touch .tpad.right { right: max(14px, env(safe-area-inset-right)); }
-    .tbtn { width: 74px; height: 74px; padding: 0; border-radius: 50%; font-size: 26px; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #fff; background: rgba(35, 26, 112, 0.62); border: 2px solid rgba(196, 181, 253, 0.55); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); touch-action: none; -webkit-user-select: none; user-select: none; }
+    .tbtn { width: 74px; height: 74px; padding: 0; border-radius: 50%; font-size: 26px; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #fff; background: rgba(35, 26, 112, 0.4); border: 2px solid rgba(196, 181, 253, 0.4); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25); touch-action: none; -webkit-user-select: none; user-select: none; }
     .tbtn small { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.85; }
+    .tbtn[hidden] { display: none; }
+    /* swipe controls: the left part of the screen is a thumb pad (drag left/right to run, up to jump, up/down to set the serve strength) */
+    #swipe { position: absolute; left: 0; top: 70px; bottom: 0; width: 58%; z-index: 2; touch-action: none; }
+    #swipe[hidden], #swipeRing[hidden] { display: none; }
+    #swipeRing { position: absolute; width: 96px; height: 96px; margin: -48px 0 0 -48px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(35, 26, 112, 0.25); pointer-events: none; }
+    #swipeDot { position: absolute; left: 50%; top: 50%; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; background: var(--grad); border: 2px solid rgba(255, 255, 255, 0.7); }
+    #swipeHint { position: absolute; left: 16px; bottom: max(14px, env(safe-area-inset-bottom)); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; color: rgba(255, 255, 255, 0.85); background: rgba(14, 8, 40, 0.45); pointer-events: none; transition: opacity 0.3s; }
+    #swipe.on #swipeHint { opacity: 0; }
+    #touch.swipe .tpad.left { display: none; }
     .tbtn.down { background: rgba(124, 77, 255, 0.85); transform: scale(0.94); filter: none; }
-    .tbtn.hit { width: 104px; height: 104px; font-size: 22px; font-weight: 900; letter-spacing: 0.06em; background: linear-gradient(135deg, rgba(91, 75, 255, 0.9), rgba(58, 43, 208, 0.92)); border-color: rgba(255, 255, 255, 0.7); }
+    .tbtn.hit { width: 104px; height: 104px; font-size: 22px; font-weight: 900; letter-spacing: 0.06em; background: linear-gradient(135deg, rgba(91, 75, 255, 0.7), rgba(58, 43, 208, 0.72)); border-color: rgba(255, 255, 255, 0.55); }
     .tbtn.hit.down { background: #fde047; color: #1f2937; }
     .tbtn.sm { width: 60px; height: 60px; font-size: 20px; }
     /* a phone held upright (or with auto-rotate off) plays sideways: the whole page turns a quarter turn */
@@ -183,7 +198,7 @@
       html.compact #menuBtn { left: 6px; }
       html.compact #mute { right: 52px; }
     @media (max-width: 400px) { .hero h1 { font-size: 36px; } }
-    html.tiny #touch #tJump { margin-bottom: 46px; } html.tiny .tbtn { width: 62px; height: 62px; font-size: 22px; } html.tiny .tbtn.hit { width: 88px; height: 88px; } html.tiny .tbtn.sm { width: 52px; height: 52px; }
+    html.tiny #touch .tpad.left .tbtn { width: 52px; height: 52px; font-size: 20px; } html.tiny #touch .vcol { gap: 6px; margin-left: 12px; } html.tiny .tbtn { width: 62px; height: 62px; font-size: 22px; } html.tiny .tbtn.hit { width: 88px; height: 88px; } html.tiny .tbtn.sm { width: 52px; height: 52px; }
     .spinner { width: 22px; height: 22px; border: 3px solid rgba(255, 255, 255, 0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #msgButtons { display: grid; gap: 10px; margin-top: 18px; }
@@ -209,14 +224,20 @@
   <button class="corner" id="menuBtn" title="Leave game" aria-label="Leave game">✕</button>
   <button class="corner" id="mute" title="Sound on/off" aria-label="Sound on or off">🔊</button>
 
+  <div id="swipe" hidden>
+    <div id="swipeRing" hidden><i id="swipeDot"></i></div>
+    <div id="swipeHint"></div>
+  </div>
   <div id="touch" hidden>
     <div class="tpad left">
-      <button class="tbtn" data-k="left" aria-label="Move left">◀</button>
-      <button class="tbtn" data-k="jump" id="tJump" aria-label="Jump">▲</button>
-      <button class="tbtn" data-k="right" aria-label="Move right">▶</button>
+      <button class="tbtn" data-k="left" id="tLeft" aria-label="Move left">◀</button>
+      <button class="tbtn" data-k="right" id="tRight" aria-label="Move right">▶</button>
+      <div class="vcol">
+        <button class="tbtn" data-k="jump" id="tJump" aria-label="Up: jump, more serve strength">▲</button>
+        <button class="tbtn" data-k="near" id="tDown" aria-label="Down: less serve strength, drop shot">▼</button>
+      </div>
     </div>
     <div class="tpad right">
-      <button class="tbtn sm" data-k="near" id="tDown" aria-label="Down: lower serve strength, drop shot">▼</button>
       <button class="tbtn hit" data-k="hit" aria-label="Hit">HIT</button>
     </div>
   </div>
@@ -250,7 +271,11 @@
           <button id="btnJoin" hidden>Join the game</button>
           <button id="btnCreate">Start an online game</button>
           <button id="btnCpu">Play the computer</button>
-          <select id="level" aria-label="Computer level"><option value="0">Easy</option><option value="1" selected>Medium</option><option value="2">Hard</option></select>
+          <div class="seg" id="level" role="radiogroup" aria-label="Computer level" data-value="1">
+            <button type="button" role="radio" data-v="0" aria-checked="false">Easy</button>
+            <button type="button" role="radio" data-v="1" aria-checked="true" class="on">Medium</button>
+            <button type="button" role="radio" data-v="2" aria-checked="false">Hard</button>
+          </div>
         </div>
       </div>
     </div>

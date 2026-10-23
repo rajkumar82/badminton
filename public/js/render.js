@@ -490,6 +490,42 @@ const Renderer = (() => {
       ctx.restore();
     }
 
+    // A how-to card over the server until they start holding the hit key: the keys to press, with the caps pulsing in turn.
+    function drawServeHint(snap, touch) {
+      const pl = snap.p[snap.sv], fs = Math.max(14, 0.3 * S), pad = fs * 0.6, gap = fs * 0.3, rowH = fs * 1.9;
+      const beat = Math.floor(time * 1.6) % 2;   // 0: strength keys glow, 1: hit key glows
+      const rows = [
+        { keys: touch === 'swipe' ? ['↕'] : touch ? ['▲', '▼'] : ['↑', '↓'], text: touch === 'swipe' ? 'swipe up or down: strength' : 'set the strength', on: beat === 0 },
+        { keys: [touch ? 'HIT' : 'SPACE'], text: 'hold, then let go to serve', on: beat === 1 },
+      ];
+      ctx.save();
+      ctx.font = `800 ${fs}px system-ui, sans-serif`; ctx.textBaseline = 'middle';
+      const capW = (k) => Math.max(fs * 1.5, ctx.measureText(k).width + fs * 0.9);
+      const keysW = rows.map((r) => r.keys.reduce((a, k) => a + capW(k) + gap, -gap));
+      const textW = rows.map((r) => ctx.measureText(r.text).width);
+      const keyCol = Math.max(...keysW) + fs * 0.7;
+      const w = pad * 2 + keyCol + Math.max(...textW), h = pad * 2 + rowH * rows.length;
+      const x = Math.max(8, Math.min(W - w - 8, sx(pl[0]) - w / 2)), y = Math.max(8, sy(3.7) - h);
+      ctx.fillStyle = 'rgba(14, 8, 40, 0.86)'; ctx.strokeStyle = 'rgba(253, 224, 71, 0.9)'; ctx.lineWidth = 2.5;
+      ctx.shadowColor = 'rgba(253, 224, 71, 0.55)'; ctx.shadowBlur = 16;
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, fs * 0.8); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur = 0;
+      rows.forEach((r, i) => {
+        const cy = y + pad + rowH * (i + 0.5);
+        let cx = x + pad;
+        for (const k of r.keys) {
+          const cw = capW(k), lift = r.on ? Math.sin(time * 10) * 1.5 : 0;
+          ctx.fillStyle = r.on ? '#fde047' : '#e2e8f0'; ctx.strokeStyle = '#475569'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.roundRect(cx, cy - fs * 0.75 + lift, cw, fs * 1.5, fs * 0.3); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#1e1b4b'; ctx.textAlign = 'center'; ctx.fillText(k, cx + cw / 2, cy + lift + 1);
+          cx += cw + gap;
+        }
+        ctx.fillStyle = r.on ? '#fde047' : '#fff'; ctx.textAlign = 'left';
+        ctx.fillText(r.text, x + pad + keyCol, cy);
+      });
+      ctx.restore();
+    }
+
     function drawNet() {
       const x = sx(NET_X), top = sy(NET_H), bottom = FY;
       // posts
@@ -852,7 +888,7 @@ const Renderer = (() => {
         drawShadow(sh[0], 0, 0.22 / (1 + sh[1] * 0.25), 0.3 / (1 + sh[1] * 0.2));
         if (snap.ph === 'serve') drawServeZone(snap.sv);
         drawLanding(snap);
-        if (snap.ph === 'serve' && snap.sa && (meta.seat === snap.sv || meta.seat < 0)) drawServeAim(snap);
+        if (snap.ph === 'serve' && snap.sa && (meta.seat === snap.sv || meta.seat < 0)) { drawServeAim(snap); if (meta.seat === snap.sv && snap.sa[2] === 0) drawServeHint(snap, meta.touch); }
         drawNet();
         const order = [0, 1];
         for (const i of order) drawPlayer(snap.p[i], i, meta.names[i], meta.seat === i, snap.ph === 'serve' && snap.sv === i);

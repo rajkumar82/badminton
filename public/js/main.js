@@ -97,7 +97,7 @@
   function startLocal() {
     const n = getName(); if (!n) return;
     Sound.unlock(); Sound.blip();
-    const level = Number($('level').value);
+    const level = Number($('level').dataset.value);
     mode = 'local'; seat = 0; role = 'player';
     names = [n, 'Computer'];
     game = new Sim.Game();
@@ -390,7 +390,7 @@
     }
     if (s.ph === 'serve') {
       banner.hidden = true; sub.hidden = false;
-      sub.textContent = s.sv === seat ? (isTouch ? 'Your serve: ▲ ▼ set the strength, hold HIT and let go at the angle you want' : 'Your serve: ↑ ↓ set the strength, hold Space and let go at the angle you want') : `${names[s.sv]} to serve`;
+      sub.textContent = s.sv === seat ? 'Your serve' : `${names[s.sv]} to serve`;
     } else if (s.ph === 'point') {
       banner.hidden = false; sub.hidden = true;
       banner.textContent = `${names[s.sv]} scores!`;
@@ -399,7 +399,7 @@
 
   function startLocalAgain() {
     game.reset(game.winner < 0 ? 0 : game.winner);
-    bot = new AI.Bot(1, Number($('level').value));
+    bot = new AI.Bot(1, Number($('level').dataset.value));
     lastPhase = ''; lastScore = '0-0'; renderer.reset(); show(null);
   }
 
@@ -489,7 +489,80 @@
       touchShown = show; $('touch').hidden = !show;
       if (!show) for (const el of document.querySelectorAll('#touch .down')) el.classList.remove('down');
     }
+    // while serving only up and down (strength) are shown; during the rally left, right and up
+    const serving = show && s.ph === 'serve' && s.sv === seat;
+    for (const [id, visible] of [['tLeft', !serving], ['tRight', !serving], ['tDown', serving]]) {
+      const el = $(id);
+      if (el.hidden === !visible) continue;
+      el.hidden = !visible;
+      if (!visible && keys[el.dataset.k]) { keys[el.dataset.k] = false; el.classList.remove('down'); sendInput(); }   // never leave a key stuck
+    }
+    swipeServing = serving;
+    const pad = isTouch && swipeOn && show;
+    if ($('swipe').hidden === pad) { $('swipe').hidden = !pad; if (!pad) swipeEnd(); }
+    $('touch').classList.toggle('swipe', swipeOn);
+    $('swipeHint').textContent = serving ? '↕ swipe up or down: strength' : '↔ swipe to run   ↑ jump';
   }
+
+  // ---------- swipe controls ----------
+  // A thumb on the left part of the screen acts as a stick: dragging away from where it landed holds left, right,
+  // up (jump, or more serve strength) or down (less serve strength; with HIT held, a drop shot).
+  let swipeOn = true, swipeServing = false, swipeId = null, swipeOrigin = null;
+  try { swipeOn = localStorage.getItem('bm-swipe') !== '0'; } catch (e) { /* storage blocked */ }
+  const SWIPE_DEAD = 6, SWIPE_DEAD_Y = 16, SWIPE_DEAD_UP = 34, SWIPE_CATCHUP = 0.18;   // px, px, px, seconds
+  let swipeThumb = null, swipeTrailX = 0, swipeRaf = 0, swipeLast = 0;
+  function swipeLocal(e) {   // pointer position in the app's own axes (the app is turned a quarter turn on an upright phone)
+    const r = $('swipe').getBoundingClientRect();
+    return document.body.classList.contains('rot') ? { x: e.clientY - r.top, y: r.right - e.clientX } : { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  function swipeKeys(dx, dy) {
+    const up = swipeServing ? SWIPE_DEAD_Y : SWIPE_DEAD_UP;
+    const want = { left: dx < -SWIPE_DEAD, right: dx > SWIPE_DEAD, jump: dy < -up, near: dy > SWIPE_DEAD_Y };
+    let changed = false;
+    for (const k of Object.keys(want)) if (keys[k] !== want[k]) { keys[k] = want[k]; changed = true; }
+    if (changed) sendInput();
+  }
+  // Sideways, the reference point trails the thumb and catches up with it: a drag starts the run at once, reversing
+  // needs only a few pixels back, and the player stops soon after the thumb does (a flick is a short step).
+  function swipeTick() {
+    if (swipeId === null) { swipeRaf = 0; return; }
+    swipeStep();
+    swipeRaf = requestAnimationFrame(swipeTick);
+  }
+  function swipeStep() {
+    const now = performance.now(), dt = Math.max(0, Math.min(0.05, (now - swipeLast) / 1000)); swipeLast = now;
+    swipeTrailX += (swipeThumb.x - swipeTrailX) * (1 - Math.exp(-dt / SWIPE_CATCHUP));
+    swipeKeys(swipeThumb.x - swipeTrailX, swipeThumb.y - swipeOrigin.y);
+  }
+  function swipeEnd() {
+    swipeId = null; swipeOrigin = null; swipeThumb = null;
+    $('swipe').classList.remove('on'); $('swipeRing').hidden = true;
+    swipeKeys(0, 0);
+  }
+  (() => {
+    const pad = $('swipe');
+    pad.addEventListener('pointerdown', (e) => {
+      if (swipeId !== null) return;
+      e.preventDefault(); Sound.unlock();
+      swipeId = e.pointerId; try { pad.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+      swipeOrigin = swipeLocal(e); swipeThumb = swipeOrigin; swipeTrailX = swipeOrigin.x; swipeLast = performance.now();
+      if (!swipeRaf) swipeRaf = requestAnimationFrame(swipeTick);
+      const ring = $('swipeRing'); ring.hidden = false; ring.style.left = swipeOrigin.x + 'px'; ring.style.top = swipeOrigin.y + 'px';
+      $('swipeDot').style.transform = ''; pad.classList.add('on');
+    });
+    pad.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== swipeId) return;
+      const p = swipeLocal(e), dx = p.x - swipeOrigin.x, dy = p.y - swipeOrigin.y, m = Math.hypot(dx, dy), cap = 40, k = m > cap ? cap / m : 1;
+      $('swipeDot').style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+      swipeThumb = p; swipeStep();   // react at once, not on the next frame; swipeTick then lets the reference catch up
+    });
+    for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(t, (e) => { if (e.pointerId === swipeId) swipeEnd(); });
+    pad.addEventListener('contextmenu', (e) => e.preventDefault());
+  })();
+  if (isTouch) window.pwaMenuItems = (window.pwaMenuItems || []).concat([{
+    get label() { return swipeOn ? 'Controls: swipe (tap for buttons)' : 'Controls: buttons (tap for swipe)'; },
+    onClick: () => { swipeOn = !swipeOn; try { localStorage.setItem('bm-swipe', swipeOn ? '1' : '0'); } catch (e) { /* ignore */ } swipeEnd(); },
+  }]);
 
   // ---------- main loop ----------
   function frame(now) {
@@ -510,7 +583,7 @@
     if (isTouch) updateTouch(view);
     const simMs = performance.now() - frameStart;
     if (mode === 'menu' || mode === 'connecting') renderer.draw(demoScene(dt), { names: DEMO_NAMES, seat: -1 });
-    else renderer.draw(view, { names, seat });
+    else renderer.draw(view, { names, seat, touch: isTouch ? (swipeOn ? 'swipe' : 'buttons') : false });
     if (window.__renderStats) window.__renderStats.sim = simMs;
     requestAnimationFrame(frame);
   }
@@ -539,6 +612,10 @@
   }
 
   // ---------- wiring ----------
+  for (const b of document.querySelectorAll('#level button')) b.addEventListener('click', () => {
+    $('level').dataset.value = b.dataset.v;
+    for (const o of document.querySelectorAll('#level button')) { const on = o === b; o.classList.toggle('on', on); o.setAttribute('aria-checked', on); }
+  });
   $('btnCpu').addEventListener('click', startLocal);
   $('btnCreate').addEventListener('click', () => startOnline(null));
   $('btnJoin').addEventListener('click', () => startOnline(inviteCode));
