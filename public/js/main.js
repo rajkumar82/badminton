@@ -298,8 +298,8 @@
   // ---------- input ----------
   // arrow up/down double as "serve further / shorter" while a serve is pending (the server cannot jump then anyway)
   const KEYMAP = {
-    ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: ['jump', 'far'], KeyW: ['jump', 'far'], ArrowDown: 'near',
-    KeyS: 'smash', KeyD: 'drop', KeyA: 'normal',
+    ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'jump', KeyW: 'jump', ArrowDown: 'near',
+    KeyA: 'normal',
     Space: 'hit', Enter: 'hit',
   };
   function sendInput() {
@@ -390,7 +390,7 @@
     }
     if (s.ph === 'serve') {
       banner.hidden = true; sub.hidden = false;
-      sub.textContent = s.sv === seat ? (isTouch ? 'Your serve: pick distance and height, then HIT' : 'Your serve: ↑ ↓ how far, hold S (flat) or D (high), then Space. It lands somewhere near the ring') : `${names[s.sv]} to serve`;
+      sub.textContent = s.sv === seat ? (isTouch ? 'Your serve: ▲ ▼ set the strength, hold HIT and let go at the angle you want' : 'Your serve: ↑ ↓ set the strength, hold Space and let go at the angle you want') : `${names[s.sv]} to serve`;
     } else if (s.ph === 'point') {
       banner.hidden = false; sub.hidden = true;
       banner.textContent = `${names[s.sv]} scores!`;
@@ -439,8 +439,7 @@
   }
 
   // ---------- touch controls ----------
-  let serveStyle = 'mid';        // flat | mid | high: how the serve is struck, chosen with the chips
-  let touchShown = false, touchServing = false;
+  let touchShown = false;
   function pulse(name) { keys[name] = true; sendInput(); setTimeout(() => { keys[name] = false; sendInput(); }, 70); }
   function holdButton(el) {
     const name = el.dataset.k;
@@ -456,24 +455,9 @@
   }
   if (isTouch) {
     for (const el of document.querySelectorAll('#touch [data-k]')) holdButton(el);
-    for (const el of document.querySelectorAll('#tServe [data-pulse]')) {
-      el.addEventListener('pointerdown', (e) => { e.preventDefault(); Sound.unlock(); pulse(el.dataset.pulse); });
-    }
-    for (const el of document.querySelectorAll('#tServe [data-style]')) {
-      el.addEventListener('pointerdown', (e) => {
-        e.preventDefault(); serveStyle = el.dataset.style;
-        for (const b of document.querySelectorAll('#tServe [data-style]')) b.classList.toggle('on', b === el);
-        syncServeKeys();
-      });
-    }
     // iOS Safari ignores user-scalable=no: stop pinch and double-tap zoom here too
     for (const t of ['gesturestart', 'gesturechange']) document.addEventListener(t, (e) => e.preventDefault());
     document.addEventListener('dblclick', (e) => e.preventDefault());
-  }
-  // the serve is struck flat (S held) or high (D held); on a phone the chips stand in for those keys while serving
-  function syncServeKeys() {
-    const smash = touchServing && serveStyle === 'flat', drop = touchServing && serveStyle === 'high';
-    if (keys.smash !== smash || keys.drop !== drop) { keys.smash = smash; keys.drop = drop; sendInput(); }
   }
   // keep the screen on while playing (Android, and iOS 16.4 and later); asked again when the page comes back to the front
   let wake = null;
@@ -505,12 +489,6 @@
       touchShown = show; $('touch').hidden = !show;
       if (!show) for (const el of document.querySelectorAll('#touch .down')) el.classList.remove('down');
     }
-    const serving = show && s.ph === 'serve' && s.sv === seat;
-    if (serving !== touchServing) {
-      touchServing = serving;
-      $('tServe').hidden = !serving; $('tDrop').hidden = serving; $('tJump').style.visibility = serving ? 'hidden' : '';   // no jumping while serving
-    }
-    syncServeKeys();
   }
 
   // ---------- main loop ----------

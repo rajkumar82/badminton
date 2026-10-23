@@ -22,7 +22,7 @@ test('receiver can move right up to the net while the serve is pending', () => {
 
 test('after the serve is struck both players are free', () => {
   const g = new Sim.Game();
-  g.setInput(0, { right: true, hit: true });
+  g.setInput(0, { bot: true, right: true, hit: true });
   run(g, 0.5);
   assert.strictEqual(g.phase, 'rally');
   g.setInput(0, { right: true });
@@ -34,7 +34,7 @@ test('the serve crosses the net and lands in the receivers court', () => {
   for (const x of [1.5, 3.5, Sim.NET_X - Sim.SERVICE_LINE]) {
     const g = new Sim.Game({ rng: () => 0.5 });
     g.players[0].x = x;
-    g.setInput(0, { hit: true });
+    g.setInput(0, { bot: true, hit: true });
     run(g, 4);
     assert.strictEqual(g.score[0], 1, `serve from ${x} should land in: ${JSON.stringify(g.score)}`);
   }
@@ -65,7 +65,7 @@ function shotWith(keys, shuttleY, face = 1) {
   const p = g.players[0];
   p.x = 4; p.y = 0;
   Object.assign(g.shuttle, { x: p.x + 0.45, y: shuttleY, vx: -3, vy: -2, speed: 4 });
-  g.setInput(0, Object.assign({ hit: true }, keys));
+  g.setInput(0, Object.assign({ bot: true, hit: true }, keys));
   let hit = null;
   for (let i = 0; i < 0.4 / Sim.DT && !hit; i++) { g.step(); hit = g.drainEvents().find((e) => e.k === 'hit'); }
   return hit && hit.t;
@@ -89,9 +89,9 @@ test('a shot key pressed just after Space still counts', () => {
   g.phase = 'rally'; g.lastHitter = 1;
   g.players[0].x = 4;
   Object.assign(g.shuttle, { x: 4.45, y: 2.4, vx: -3, vy: -2, speed: 4 });
-  g.setInput(0, { hit: true });
+  g.setInput(0, { bot: true, hit: true });
   for (let i = 0; i < 3; i++) g.step();            // swing has started with no modifier
-  g.setInput(0, { hit: true, smash: true });       // S arrives a few milliseconds later
+  g.setInput(0, { bot: true, hit: true, smash: true });       // S arrives a few milliseconds later
   let hit = null;
   for (let i = 0; i < 0.4 / Sim.DT && !hit; i++) { g.step(); hit = g.drainEvents().find((e) => e.k === 'hit'); }
   assert.strictEqual(hit.t, 'smash');
@@ -99,7 +99,7 @@ test('a shot key pressed just after Space still counts', () => {
 
 test('the server cannot hit their own serve again', () => {
   const g = new Sim.Game();
-  g.setInput(0, { hit: true });
+  g.setInput(0, { bot: true, hit: true });
   run(g, 0.2);
   assert.strictEqual(g.phase, 'rally');
   assert.strictEqual(g.lastHitter, 0);
@@ -107,7 +107,7 @@ test('the server cannot hit their own serve again', () => {
   g.setInput(0, { hit: false }); run(g, 0.05);
   g.shuttle.x = g.players[0].x + 0.5; g.shuttle.y = g.players[0].y + 1.5;
   g.drainEvents();
-  g.setInput(0, { hit: true, smash: true });
+  g.setInput(0, { bot: true, hit: true, smash: true });
   const hits = [];
   for (let i = 0; i < 0.4 / Sim.DT; i++) { g.step(); hits.push(...g.drainEvents().filter((e) => e.k === 'hit')); }
   assert.strictEqual(hits.length, 0);
@@ -126,7 +126,7 @@ test('a drive lands in the opponents court from anywhere in the front half', () 
     const g = new Sim.Game();
     g.phase = 'rally'; g.lastHitter = 1; g.players[0].x = x;
     Object.assign(g.shuttle, { x: x + 0.45, y: 1.9, vx: -3, vy: -2, speed: 4 });
-    g.setInput(0, { hit: true, right: true });
+    g.setInput(0, { bot: true, hit: true, right: true });
     run(g, 5);
     assert.ok(g.score[0] === 1 || g.score[1] === 0 && g.phase === 'rally', `drive from ${x}: ${JSON.stringify(g.score)}`);
   }
@@ -136,18 +136,17 @@ test('a drive lands in the opponents court from anywhere in the front half', () 
 test('up and down taps move the serve target between near, mid and far', () => {
   const g = new Sim.Game();
   assert.strictEqual(g.serveAim[0], 1);
-  g.setInput(0, { far: true }); run(g, 0.02); g.setInput(0, { far: false }); run(g, 0.02);
+  g.setInput(0, { bot: true, far: true }); run(g, 0.02); g.setInput(0, { bot: true, far: false }); run(g, 0.02);
   assert.strictEqual(g.serveAim[0], 2);
-  g.setInput(0, { far: true }); run(g, 0.02); g.setInput(0, { far: false }); run(g, 0.02);
+  g.setInput(0, { bot: true, far: true }); run(g, 0.02); g.setInput(0, { bot: true, far: false }); run(g, 0.02);
   assert.strictEqual(g.serveAim[0], 2, 'cannot go beyond far');
-  for (let i = 0; i < 3; i++) { g.setInput(0, { near: true }); run(g, 0.02); g.setInput(0, { near: false }); run(g, 0.02); }
+  for (let i = 0; i < 3; i++) { g.setInput(0, { bot: true, near: true }); run(g, 0.02); g.setInput(0, { bot: true, near: false }); run(g, 0.02); }
   assert.strictEqual(g.serveAim[0], 0);
-  assert.strictEqual(g.snapshot().sa[0], 0);
 });
 
 test('a very short tap of the arrow key still counts', () => {
   const g = new Sim.Game();
-  g.setInput(0, { far: true }); g.setInput(0, { far: false });   // pressed and released before a physics step
+  g.setInput(0, { bot: true, far: true }); g.setInput(0, { bot: true, far: false });   // pressed and released before a physics step
   run(g, 0.02);
   assert.strictEqual(g.serveAim[0], 2);
 });
@@ -156,7 +155,7 @@ test('the serve lands where it was aimed, for every length and height', () => {
   for (const aim of [0, 1, 2]) for (const key of [{}, { smash: true }, { drop: true }]) {
     const g = new Sim.Game({ rng: () => 0.5 });
     g.players[0].x = 3.0; g.serveAim[0] = aim;
-    g.setInput(0, Object.assign({ hit: true }, key));
+    g.setInput(0, Object.assign({ bot: true, hit: true }, key));
     let landed = null;
     for (let i = 0; i < 6 / Sim.DT && landed === null; i++) {
       g.step();
@@ -171,7 +170,7 @@ test('S gives a flat fast serve and D a high lob', () => {
   const apex = (key) => {
     const g = new Sim.Game({ rng: () => 0.5 });
     g.players[0].x = 3.0;
-    g.setInput(0, Object.assign({ hit: true }, key));
+    g.setInput(0, Object.assign({ bot: true, hit: true }, key));
     let top = 0;
     for (let i = 0; i < 3 / Sim.DT; i++) { g.step(); top = Math.max(top, g.shuttle.y); g.drainEvents(); }
     return top;
@@ -194,7 +193,7 @@ test('serves are approximate: they land around the target, sometimes short or ou
   for (let n = 0; n < 150; n++) {
     const g = new Sim.Game();
     g.players[0].x = 3.0; g.serveAim[0] = 2;            // far: the loosest
-    g.setInput(0, { hit: true });
+    g.setInput(0, { bot: true, hit: true });
     for (let i = 0; i < 6 / Sim.DT && g.phase !== 'point'; i++) g.step();
     const x = g.shuttle.x;
     landings.push(x);
@@ -213,7 +212,7 @@ test('a short serve can clip the net', () => {
   for (let n = 0; n < 300; n++) {
     const g = new Sim.Game();
     g.players[0].x = 4.5; g.serveAim[0] = 0;            // near, from right behind the line
-    g.setInput(0, { hit: true, smash: true });          // flat, so it has little room to spare
+    g.setInput(0, { bot: true, hit: true, smash: true });          // flat, so it has little room to spare
     for (let i = 0; i < 4 / Sim.DT && g.phase !== 'point'; i++) g.step();
     if (g.score[1] === 1) faults++;
   }
@@ -229,7 +228,7 @@ function rallyAt(shuttle, player = {}) {
   return g;
 }
 function swingAndRead(g, keys = {}) {
-  g.setInput(0, Object.assign({ hit: true }, keys));
+  g.setInput(0, Object.assign({ bot: true, hit: true }, keys));
   g.step();
   g.setInput(0, Object.assign({ hit: false }, keys));
   let hit = null;
@@ -247,7 +246,7 @@ test('Space alone picks the shot: lift when low, clear at normal height, smash w
 });
 
 test('holding down with Space drops the shuttle', () => {
-  const h = swingAndRead(rallyAt({ x: 3.0, y: 1.8 }, { x: 2.7 }), { near: true });
+  const h = swingAndRead(rallyAt({ x: 3.0, y: 1.8 }, { x: 2.7 }), { bot: true, near: true });
   assert.strictEqual(h && h.t, 'drop');
 });
 
@@ -277,4 +276,18 @@ test('lag compensation: a hit is judged against where the shuttle was a moment a
   };
   assert.strictEqual(build(0), false, 'without compensation the hit is out of reach');
   assert.strictEqual(build(0.12), true, 'with compensation it counts, because the player saw it in reach');
+});
+
+test('a person serves by holding hit and letting go: angle swings while held, strength follows up and down', () => {
+  const g = new Sim.Game({ rng: () => 0.5 });
+  const p0 = g.power[0];
+  g.setInput(0, { jump: true }); run(g, 0.2);
+  assert.ok(g.power[0] > p0, 'up raises the strength');
+  g.setInput(0, { jump: false, hit: true }); run(g, 0.3);
+  assert.strictEqual(g.phase, 'serve', 'nothing happens while hit is held');
+  const [, deg, state] = g.snapshot().sa;
+  assert.strictEqual(state, 1);
+  assert.ok(deg > 20, 'the angle has moved');
+  g.setInput(0, { hit: false }); run(g, 0.5);
+  assert.notStrictEqual(g.phase, 'serve', 'letting go serves');
 });

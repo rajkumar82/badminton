@@ -46,6 +46,7 @@
       const s = game.shuttle;
       const cfg = this.cfg;
       const input = Sim.blankInput();
+      input.bot = true;
       const onMySide = this.idx === 0 ? s.x < Sim.NET_X : s.x > Sim.NET_X;
       const home = this.idx === 0 ? Sim.NET_X - 3.3 : Sim.NET_X + 3.3;
 

@@ -147,10 +147,6 @@
     .tbtn.hit { width: 104px; height: 104px; font-size: 22px; font-weight: 900; letter-spacing: 0.06em; background: linear-gradient(135deg, rgba(91, 75, 255, 0.9), rgba(58, 43, 208, 0.92)); border-color: rgba(255, 255, 255, 0.7); }
     .tbtn.hit.down { background: #fde047; color: #1f2937; }
     .tbtn.sm { width: 60px; height: 60px; font-size: 20px; }
-    #tServe { position: absolute; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: auto; }
-    #tServe .grp { display: flex; gap: 8px; align-items: center; background: rgba(14, 8, 40, 0.72); border: 1px solid rgba(190, 170, 255, 0.3); border-radius: 999px; padding: 5px 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
-    #tServe button { font-size: 14px; padding: 9px 13px; border-radius: 999px; background: var(--card2); border: 1px solid rgba(190, 170, 255, 0.25); touch-action: none; }
-    #tServe button.on { background: var(--brand); border-color: transparent; }
     /* a phone held upright (or with auto-rotate off) plays sideways: the whole page turns a quarter turn */
     #app { position: fixed; inset: 0; }
     body.rot #app { inset: auto; top: 0; left: 100%; width: 100vh; height: 100vw; width: 100dvh; height: 100dvw; transform-origin: 0 0; transform: rotate(90deg); }
@@ -187,7 +183,7 @@
       html.compact #menuBtn { left: 6px; }
       html.compact #mute { right: 52px; }
     @media (max-width: 400px) { .hero h1 { font-size: 36px; } }
-    html.tiny #touch #tJump { margin-bottom: 46px; } html.tiny .tbtn { width: 62px; height: 62px; font-size: 22px; } html.tiny .tbtn.hit { width: 88px; height: 88px; } html.tiny .tbtn.sm { width: 52px; height: 52px; } html.tiny #tServe button { padding: 7px 11px; }
+    html.tiny #touch #tJump { margin-bottom: 46px; } html.tiny .tbtn { width: 62px; height: 62px; font-size: 22px; } html.tiny .tbtn.hit { width: 88px; height: 88px; } html.tiny .tbtn.sm { width: 52px; height: 52px; }
     .spinner { width: 22px; height: 22px; border: 3px solid rgba(255, 255, 255, 0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     #msgButtons { display: grid; gap: 10px; margin-top: 18px; }
@@ -219,12 +215,8 @@
       <button class="tbtn" data-k="jump" id="tJump" aria-label="Jump">▲</button>
       <button class="tbtn" data-k="right" aria-label="Move right">▶</button>
     </div>
-    <div id="tServe" hidden>
-      <div class="grp">Aim <button data-pulse="near">Nearer</button><button data-pulse="far">Farther</button></div>
-      <div class="grp"><button data-style="flat">Flat</button><button data-style="mid" class="on">Normal</button><button data-style="high">High</button></div>
-    </div>
     <div class="tpad right">
-      <button class="tbtn sm" data-k="near" id="tDrop" aria-label="Drop shot (hold with hit)">↓<small>drop</small></button>
+      <button class="tbtn sm" data-k="near" id="tDown" aria-label="Down: lower serve strength, drop shot">▼</button>
       <button class="tbtn hit" data-k="hit" aria-label="Hit">HIT</button>
     </div>
   </div>
@@ -257,10 +249,8 @@
         <div class="stack">
           <button id="btnJoin" hidden>Join the game</button>
           <button id="btnCreate">Start an online game</button>
-          <div class="row">
-            <select id="level" aria-label="Computer level"><option value="0">Easy</option><option value="1" selected>Medium</option><option value="2">Hard</option></select>
-            <button class="secondary" id="btnCpu">Play the computer</button>
-          </div>
+          <button id="btnCpu">Play the computer</button>
+          <select id="level" aria-label="Computer level"><option value="0">Easy</option><option value="1" selected>Medium</option><option value="2">Hard</option></select>
         </div>
       </div>
     </div>

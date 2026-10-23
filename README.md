@@ -26,18 +26,15 @@ twice in a row (the server cannot hit their own serve), and may step up to one m
 | `Space` | hit (also serves). The game picks the shot: a low shuttle is lifted, one hit high above your feet (jump for it) is smashed, anything else is a clear |
 | down arrow + `Space` | drop shot, just over the net |
 | forward arrow + `Space` | flat drive |
-| `S` / `D` / `A` + `Space` | optional: force a smash, a drop or a clear |
+| `A` + `Space` | optional: force a clear |
 
 A smash shows a red spot on the floor where it will land. A shuttle coming steeply down at you gets extra reach and a
 longer hit window, so a smash can be dug out if you get close.
 
-**Serving:** before you serve, tap the up or down arrow to choose how far it lands (near, mid or far). Three spots light
-up on the opponent's half of the floor, the chosen one glows, and a dotted arc previews the flight. Hold `S` with
-`Space` for a flat fast serve or `D` with `Space` for a high lob (the arc and label update as you hold the key). The
-server cannot jump or cross the service line until the serve is struck. The serve is approximate: it lands somewhere
-around the ring, which is drawn as wide as the serve may stray. Far and flat serves are the loosest, so they can land
-on the line or out of the court, and a short flat one can clip the net. The computer varies its serves, and misses
-them, too.
+**Serving:** hold `Space` (or the HIT button) and let go to serve. While you hold, a circle beside the shuttle grows and
+shrinks (strength) and an arrow swings up and down (direction); the serve leaves with whatever they show when you let
+go. A serve that lands short of the short service line is a fault. The server cannot jump or cross the service line
+until the serve is struck. The computer serves by its own rules and misses them, too.
 
 Hold the shot key and press `Space` together; the key held in the first moments of the swing decides the shot. Until
 the serve is struck the server has to stay behind the short service line (the lit-up green zone); the receiver may

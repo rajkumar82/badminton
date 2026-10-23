@@ -459,51 +459,35 @@ const Renderer = (() => {
       ctx.restore();
     }
 
-    // dotted arc showing the flight for the chosen height, and a label. Only the server (and spectators) see it.
-    const arcCache = { key: '', pts: null };
+    // The serve gauge beside the shuttle: an arc of the angles it can leave at with a marker that swings along it while
+    // hit is held, and the dotted flight (with a spot where it comes down) for the current angle and strength.
     function drawServeAim(snap) {
-      const server = snap.sv, [aim, targetX, height] = snap.sa;
-      const face = server === 0 ? 1 : -1;
-      const yb = FY + (H - FY) * 0.78, yMid = FY + (yb - FY) * 0.5;
-      const pulse = 0.5 + 0.5 * Math.sin(time * 6);
-      const floorX = (x) => sx(x) + (sx(x) - W / 2) * 0.12 * 0.5;
-      const names = ['NEAR', 'MID', 'FAR'];
-      // the flight of the serve, drawn in the side view
-      const pl = snap.p[server];
-      const sx0 = pl[0] + face * 0.55, sy0 = pl[1] + 1.15;
-      const key = `${sx0.toFixed(2)}|${sy0.toFixed(2)}|${face}|${targetX}|${height}`;
-      if (arcCache.key !== key) { arcCache.key = key; arcCache.pts = Sim.serveTrajectory(sx0, sy0, face, targetX, height); }
+      const [str, deg, state] = snap.sa;
+      const server = snap.sv, face = server === 0 ? 1 : -1, pl = snap.p[server];
+      const x0 = pl[0] + face * 0.55, y0 = pl[1] + 1.15, cx = sx(x0), cy = sy(y0);
+      const pulse = 0.5 + 0.5 * Math.sin(time * 6), R = 0.8 * S;
+      const sv = Sim.serveFor(x0, y0, face, str, deg);
+      const pts = Sim.serveFlight(x0, y0, face, sv.speed, sv.angle);
       ctx.save();
-      ctx.strokeStyle = `rgba(253,224,71,${0.55 + 0.25 * pulse})`; ctx.lineWidth = Math.max(2, 0.04 * S); ctx.setLineDash([0.12 * S, 0.14 * S]); ctx.lineCap = 'round';
+      ctx.lineCap = 'round';
+      // the dotted flight
+      ctx.strokeStyle = `rgba(253,224,71,${0.6 + 0.25 * pulse})`; ctx.lineWidth = Math.max(2, 0.04 * S); ctx.setLineDash([0.12 * S, 0.14 * S]);
       ctx.beginPath();
-      arcCache.pts.forEach((q, i) => { if (i) ctx.lineTo(sx(q.x), sy(q.y)); else ctx.moveTo(sx(q.x), sy(q.y)); });
-      ctx.stroke();
-      ctx.setLineDash([]);
+      pts.forEach((q, i) => { if (i) ctx.lineTo(sx(q.x), sy(q.y)); else ctx.moveTo(sx(q.x), sy(q.y)); });
+      ctx.stroke(); ctx.setLineDash([]);
+      // where it comes down
+      const end = pts[pts.length - 1], ex = sx(end.x) + (sx(end.x) - W / 2) * 0.06, yb = FY + (H - FY) * 0.78, ey = FY + (yb - FY) * 0.5, rr = 0.3 * S;
+      ctx.fillStyle = `rgba(253,224,71,${0.22 + 0.14 * pulse})`; ctx.strokeStyle = 'rgba(253,224,71,0.9)'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(ex, ey, rr, rr * 0.28, 0, 0, 6.3); ctx.fill(); ctx.stroke();
+      // the arc of angles (lowest to highest angle) and the marker on it
+      const ang = (d) => { const a = d * Math.PI / 180; return Math.atan2(-Math.sin(a), face * Math.cos(a)); };
+      const a1 = ang(Sim.SERVE_DEG[0]), a2 = ang(Sim.SERVE_DEG[1]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = Math.max(3, 0.05 * S);
+      ctx.beginPath(); ctx.arc(cx, cy, R, face > 0 ? a2 : a1, face > 0 ? a1 : a2); ctx.stroke();
+      const am = ang(deg), mx = cx + Math.cos(am) * R, my = cy + Math.sin(am) * R;
+      ctx.fillStyle = state === 2 ? '#fff' : '#fde047'; ctx.strokeStyle = '#7a5b00'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(mx, my, Math.max(5, 0.08 * S), 0, 6.3); ctx.fill(); ctx.stroke();
       ctx.restore();
-      // the three spots on the floor
-      for (let i = 0; i < 3; i++) {
-        const x = NET_X + face * Sim.AIM_DIST[i];
-        const cx = floorX(x), sel = i === aim;
-        const rr = (sel ? Math.max(0.5, Sim.AIM_SPREAD[i] * (height === 0 ? 1.3 : 1)) + 0.05 * pulse : 0.34) * S;   // the lit ring is as wide as the serve may stray
-        ctx.lineWidth = sel ? 3 : 2;
-        ctx.strokeStyle = sel ? `rgba(253,224,71,${0.85 + 0.15 * pulse})` : 'rgba(255,255,255,0.4)';
-        ctx.fillStyle = sel ? `rgba(253,224,71,${0.2 + 0.14 * pulse})` : 'rgba(255,255,255,0.07)';
-        ctx.beginPath(); ctx.ellipse(cx, yMid, rr, rr * 0.28, 0, 0, 6.3); ctx.fill(); ctx.stroke();
-        if (sel) {
-          ctx.beginPath(); ctx.moveTo(cx - rr * 0.55, yMid); ctx.lineTo(cx + rr * 0.55, yMid); ctx.moveTo(cx, yMid - rr * 0.16); ctx.lineTo(cx, yMid + rr * 0.16); ctx.stroke();
-          // a line up to where the arc comes down, so the spot and the arc read as one thing
-          ctx.save(); ctx.setLineDash([4, 6]); ctx.strokeStyle = 'rgba(253,224,71,0.45)'; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.moveTo(sx(targetX), FY); ctx.lineTo(cx, yMid - rr * 0.28); ctx.stroke(); ctx.restore();
-        }
-        ctx.font = `${sel ? 800 : 600} ${Math.max(10, (sel ? 0.19 : 0.15) * S)}px system-ui, sans-serif`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-        ctx.fillStyle = sel ? '#fde047' : 'rgba(255,255,255,0.5)';
-        ctx.fillText(names[i], cx, yMid + rr * 0.28 + 0.22 * S);
-      }
-      // height label next to the server
-      ctx.font = `700 ${Math.max(11, 0.2 * S)}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.fillStyle = '#fde047';
-      const ht = ['FLAT & FAST', 'NORMAL', 'HIGH LOB'][height];
-      ctx.fillText(ht, sx(pl[0]), sy(2.95));
     }
 
     function drawNet() {
@@ -731,19 +715,9 @@ const Renderer = (() => {
     }
 
     // Before the serve the shuttle is held along the dotted preview arc: feathers pointing the way it will fly, cork at the back.
-    const heldCache = { key: '', ang: 0 };
     function heldAngle(snap) {
-      const [, targetX, height] = snap.sa;
-      const face = snap.sv === 0 ? 1 : -1, pl = snap.p[snap.sv];
-      const x0 = pl[0] + face * 0.55, y0 = pl[1] + 1.15;
-      const key = `${x0.toFixed(2)}|${y0.toFixed(2)}|${face}|${targetX}|${height}`;
-      if (heldCache.key !== key) {
-        heldCache.key = key;
-        const pts = Sim.serveTrajectory(x0, y0, face, targetX, height);
-        const q = pts[Math.min(4, pts.length - 1)];
-        heldCache.ang = pts.length > 1 ? Math.atan2(q.y - pts[0].y, q.x - pts[0].x) + Math.PI : 0;
-      }
-      return heldCache.ang;
+      const a = snap.sa[1] * Math.PI / 180, face = snap.sv === 0 ? 1 : -1;
+      return Math.atan2(Math.sin(a), face * Math.cos(a)) + Math.PI;
     }
 
     // A nylon shuttlecock: a rounded cork base and a see-through conical skirt of ribs and rings, so the little
