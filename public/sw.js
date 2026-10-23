@@ -7,7 +7,7 @@
 //   - set SHELL to that app's own shell files
 //   - add any other same-origin GET paths that must always hit the network (never be cached),
 //     such as OAuth redirects, alongside the existing '/api/' bypass below
-const CACHE = 'badminton-v26';
+const CACHE = 'badminton-v28';
 const SHELL = ['/', '/ping.js', '/brand.css', '/js/sim.js', '/js/ai.js', '/js/audio.js', '/js/render.js', '/js/main.js', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/install.js'];
 
 self.addEventListener('install', (e) => {

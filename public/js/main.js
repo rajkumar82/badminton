@@ -59,7 +59,6 @@
     mode = 'menu'; game = null; bot = null; view = null; buffer = []; seat = -1; room = null;
     renderer.reset();
     $('hud').hidden = true; $('banner').hidden = true; $('sub').hidden = true; $('menuBtn').hidden = true;
-    Sound.ambience(false);
     history.replaceState(null, '', location.pathname);
     $('joinNote').hidden = true; $('btnJoin').hidden = true; $('btnCreate').hidden = false;
     show('pMenu');
@@ -93,18 +92,25 @@
     return myName;
   }
 
+  // ---------- usage counters (sent with the daily ping by ping.js; nothing personal) ----------
+  const count = (name) => { try { if (window.pingCount) window.pingCount(name); } catch (e) { /* analytics must never break the game */ } };
+  let sessionCounted = false;
+  function countSession() { if (!sessionCounted) { sessionCounted = true; count('play-session'); } }
+  function countCpuGame(level) { count('vs-computer'); count('lvl-' + ['easy', 'medium', 'hard'][level]); countSession(); }
+
   // ---------- local game against the computer ----------
   function startLocal() {
     const n = getName(); if (!n) return;
     Sound.unlock(); Sound.blip();
     const level = Number($('level').dataset.value);
+    countCpuGame(level);
     mode = 'local'; seat = 0; role = 'player';
     names = [n, 'Computer'];
     game = new Sim.Game();
     bot = new AI.Bot(1, level);
     acc = 0; renderer.reset(); lastPhase = ''; lastScore = '0-0';
     $('hud').hidden = false; $('menuBtn').hidden = false; show(null);
-    updateNames(); Sound.ambience(true);
+    updateNames();
   }
 
   // ---------- online ----------
@@ -181,6 +187,7 @@
     const n = getName(); if (!n) return;
     Sound.unlock(); Sound.blip();
     mode = 'connecting';
+    count(code ? 'online-joined' : 'online-created');
     show(null);
     connectOnline(code ? { t: 'join', code, name: n } : { t: 'create', name: n });
     showRetrying();
@@ -238,11 +245,12 @@
       case 'joined':
         stopRetry();
         mode = 'online'; role = m.role; seat = m.seat; room = m.room; names = room.names.slice();
+        if (!m.resumed) { if (role === 'player') countSession(); else count('spectate'); }
         saveSession({ code: room.code, token: m.token || null });
         startPingTest();
         if (!m.resumed) { renderer.reset(); buffer = []; view = null; rematchSent = false; lastPhase = ''; lastScore = '0-0'; pausedUntil = 0; }
         else buffer = [];
-        $('hud').hidden = false; $('menuBtn').hidden = false; updateNames(); Sound.ambience(true);
+        $('hud').hidden = false; $('menuBtn').hidden = false; updateNames();
         if (role === 'player' && !room.started) {
           $('shareLink').value = link();
           $('btnShare').hidden = !navigator.share;
@@ -327,7 +335,7 @@
     const sh = snap ? snap.sh : [6.7];
     renderer.onEvents(events, { shuttleX: sh[0] });
     for (const e of events) {
-      if (e.k === 'hit') { Sound.hit(e.t, e.p, e.x); if (e.i === seat) buzz(e.t === 'smash' ? 45 : e.t === 'drop' ? 10 : 18); }
+      if (e.k === 'hit') { if (e.t === 'serve' && e.i === seat) count('serve'); Sound.hit(e.t, e.p, e.x); if (e.i === seat) buzz(e.t === 'smash' ? 45 : e.t === 'drop' ? 10 : 18); }
       else if (e.k === 'swing') Sound.swing(e.x);
       else if (e.k === 'aim') { if (e.i === seat) Sound.blip(); }
       else if (e.k === 'net') Sound.net(e.p, e.x);
@@ -377,6 +385,7 @@
       lastPhase = s.ph;
       if (s.ph === 'over') {
         const win = s.w;
+        if (seat >= 0) count((mode === 'local' ? 'cpu-' : 'online-') + (win === seat ? 'won' : 'lost'));
         banner.hidden = true; sub.hidden = true;
         const title = seat < 0 ? `${names[win]} wins!` : (win === seat ? 'You win! 🏆' : `${names[win]} wins`);
         const text = `Final score ${s.sc[0]} – ${s.sc[1]}`;
@@ -399,6 +408,7 @@
 
   function startLocalAgain() {
     game.reset(game.winner < 0 ? 0 : game.winner);
+    countCpuGame(Number($('level').dataset.value));
     bot = new AI.Bot(1, Number($('level').dataset.value));
     lastPhase = ''; lastScore = '0-0'; renderer.reset(); show(null);
   }

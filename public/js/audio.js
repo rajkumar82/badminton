@@ -1,13 +1,12 @@
 // All sounds are synthesised with WebAudio, so there are no audio files to load. They are built the way the real
 // ones are made: a hit is a sharp click (cork meeting strings), the ring of the string bed (a few quickly dying
 // tones), a short thump from the cork and a faint rustle from the feathers. Shoes squeak and thud on the court,
-// and a quiet murmur fills the hall.
+// and the crowd cheers when a point ends.
 const Sound = (() => {
   let ctx = null;
   let master = null;
   let noiseBuf = null;
   let muted = false;
-  let ambient = null;
   try { muted = localStorage.getItem('bm-muted') === '1'; } catch (e) { /* storage blocked */ }
 
   function init() {
@@ -161,23 +160,6 @@ const Sound = (() => {
       if (won) noise({ dur: 2.2, freq: 1700, q: 0.3, gain: 0.2, attack: 0.5, delay: 0.3 });
     },
     blip() { if (ctx && !muted) tone({ f0: 880, f1: 1320, dur: 0.07, gain: 0.08, type: 'square' }); },
-
-    // the low murmur of a hall full of people, very quiet, while a game is on
-    ambience(on) {
-      if (!ctx) return;
-      if (!on) { if (ambient) { try { ambient.src.stop(); } catch (e) { /* stopped */ } ambient = null; } return; }
-      if (ambient) return;
-      const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
-      const band = ctx.createBiquadFilter(); band.type = 'bandpass'; band.frequency.value = 520; band.Q.value = 0.5;
-      const low = ctx.createBiquadFilter(); low.type = 'lowpass'; low.frequency.value = 1400;
-      const g = ctx.createGain(); g.gain.value = 0.035;
-      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.17;
-      const lfoGain = ctx.createGain(); lfoGain.gain.value = 0.012;
-      lfo.connect(lfoGain); lfoGain.connect(g.gain);
-      src.connect(band); band.connect(low); low.connect(g); g.connect(master);
-      src.start(); lfo.start();
-      ambient = { src };
-    },
   };
   return api;
 })();
