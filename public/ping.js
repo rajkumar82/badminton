@@ -3,12 +3,11 @@
 //
 // "Real person" means: not an automated browser or known bot, has touched/clicked/scrolled/typed, and has had the
 // page visible for MIN_VISIBLE_S seconds. Nothing is sent before that, nothing is shown, and failures are ignored.
-// Only a random device id (kept in localStorage) identifies a device. The only cookie is the optional ?nocount=1
-// opt-out switch below; no IP is kept by the service.
+// Only a random device id identifies a device (kept in a cookie shared by my *.nocod.dev apps, and in localStorage as
+// backup). No IP is kept by the service.
 //
 // Optional hooks for the page:
 //   window.pingCount('share')   count a feature use; the totals go out with the next ping
-//   ?nocount=1 in the address (once per browser, in any of my apps) stops that browser being counted in all of them; ?nocount=0 undoes it
 (function () {
   var script = document.currentScript;
   var APP = script && script.dataset.app;
@@ -18,23 +17,15 @@
   var MIN_VISIBLE_S = 10;
   var KEY = 'fb:' + APP;
 
-  // Leave my own use out: never from a development address, and not from a browser I switched off by opening any of
-  // my apps once with ?nocount=1 (?nocount=0 switches it back on). The switch is a cookie shared by every *.nocod.dev
-  // app (and a localStorage flag as backup), so it only has to be done once per browser, e.g. on the home page.
-  var OFF = 'fb:off', COOKIE = 'fb_off';
+  // Never count development addresses. My own use is hidden from the dashboard instead (feedback/README.md).
   var cookieDomain = /(^|\.)nocod\.dev$/.test(location.hostname) ? '; domain=.nocod.dev' : '';
-  function setOff(on) {
-    try { if (on) localStorage.setItem(OFF, '1'); else localStorage.removeItem(OFF); } catch (e) { /* ignore */ }
-    try { document.cookie = COOKIE + '=' + (on ? '1; max-age=31536000' : '; max-age=0') + '; path=/; SameSite=Lax' + cookieDomain + (location.protocol === 'https:' ? '; Secure' : ''); } catch (e) { /* ignore */ }
+  function setCookie(name, value, maxAge) {
+    try { document.cookie = name + '=' + value + '; max-age=' + maxAge + '; path=/; SameSite=Lax' + cookieDomain + (location.protocol === 'https:' ? '; Secure' : ''); } catch (e) { /* ignore */ }
   }
-  function isOff() {
-    try { if (localStorage.getItem(OFF)) return true; } catch (e) { /* ignore */ }
-    return (' ' + document.cookie).indexOf(' ' + COOKIE + '=1') >= 0;
+  function getCookie(name) {
+    var m = new RegExp('(?:^|; )' + name + '=([^;]*)').exec(document.cookie);
+    return m ? m[1] : '';
   }
-  var q = /[?&]nocount=([01])/.exec(location.search);
-  if (q) setOff(q[1] === '1');
-  else if (isOff()) setOff(true);   // a flag from another app's address: keep this app's copy in step too
-  if (isOff()) return;
   if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|.*\.local$)/.test(location.hostname)) return;
 
   var BOT = /bot|crawl|spider|slurp|preview|headless|lighthouse|pagespeed|facebookexternalhit|phantom|puppeteer|playwright/i;
@@ -50,6 +41,11 @@
     state.id = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Math.random()).slice(2) + String(Date.now());
     state.first = today;
   }
+  // One device id for the whole browser, shared by all my apps through a cookie on .nocod.dev, so the dashboard can
+  // be told "this browser is mine" once (see feedback/README.md). Falls back to the per-app id when cookies are blocked.
+  var sharedId = getCookie('fb_did');
+  if (/^[A-Za-z0-9-]{8,40}$/.test(sharedId)) state.id = sharedId;
+  else setCookie('fb_did', state.id, 63072000);
   if (!sessionStorage.getItem(KEY)) { // once per browser session
     try { sessionStorage.setItem(KEY, '1'); } catch (e) { /* ignore */ }
     state.visits = (state.visits || 0) + 1;
