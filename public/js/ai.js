@@ -5,9 +5,10 @@
   else root.AI = factory(root.Sim);
 }(typeof self !== 'undefined' ? self : this, function (Sim) {
   const LEVELS = [
-    { reaction: 0.5, error: 1.7, jumpy: 0.3, smart: 0.1, serveDelay: 1.8 },
-    { reaction: 0.22, error: 0.7, jumpy: 0.7, smart: 0.45, serveDelay: 1.2 },
-    { reaction: 0.06, error: 0.12, jumpy: 1, smart: 0.95, serveDelay: 0.8 },
+    // miss: chance to let an ordinary shot go; dig: chance to even try for a fast smash
+    { reaction: 0.75, error: 2.6, jumpy: 0.2, smart: 0.05, serveDelay: 1.8, miss: 0.3, dig: 0.2 },
+    { reaction: 0.35, error: 1.2, jumpy: 0.6, smart: 0.4, serveDelay: 1.2, miss: 0.1, dig: 0.5 },
+    { reaction: 0.08, error: 0.2, jumpy: 1, smart: 0.95, serveDelay: 0.8, miss: 0, dig: 0.9 },
   ];
 
   class Bot {
@@ -21,6 +22,7 @@
       this.down = false;
       this.smash = false;
       this.serveAt = 0;
+      this.skip = null;
       this.lastHit = false;
       this.lastFar = false; this.lastNear = false;
       this.serveH = 1;
@@ -76,6 +78,11 @@
       if (this.think <= 0 && incoming && canHit) {
         this.think = cfg.reaction;
         const hitY = me.y + 1.6;
+        // decide once per shot whether the bot gives up on it; smashes are given up on much more often
+        if (this.skip === null) {
+          const fast = Math.hypot(s.vx, s.vy) > 18;
+          this.skip = Math.random() >= (fast ? cfg.dig : 1 - cfg.miss);
+        }
         const pred = Sim.predict(s, Math.max(hitY, 1.4));
         if (pred) {
           // the bot hits on the way down, a little in front of itself
@@ -89,7 +96,7 @@
         this.down = Math.random() < cfg.smart ? foeDeep : Math.random() < 0.15;
         this.smash = Math.random() < 0.25 + 0.7 * cfg.smart;
       }
-      if (!incoming || !canHit) { this.targetX = null; this.wantJump = false; this.down = false; this.smash = false; }
+      if (!incoming || !canHit) { this.skip = null; this.targetX = null; this.wantJump = false; this.down = false; this.smash = false; }
 
       const tx = this.targetX === null ? home : this.targetX;
       this.goTo(me, tx, input);
@@ -104,7 +111,7 @@
         input.drop = !input.smash && this.down;
         input.normal = !input.smash && !input.drop; // never a drive just because it is running forward
         const closing = dist < Sim.REACH * 1.15 + 0.35;
-        if (closing && me.swing < 0) input.hit = true;
+        if (closing && me.swing < 0 && !this.skip) input.hit = true;
       }
       return input;
     }
