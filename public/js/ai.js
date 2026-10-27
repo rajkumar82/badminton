@@ -6,8 +6,8 @@
 }(typeof self !== 'undefined' ? self : this, function (Sim) {
   const LEVELS = [
     // miss: chance to let an ordinary shot go; dig: chance to even try for a fast smash
-    { reaction: 0.75, error: 2.6, jumpy: 0.2, smart: 0.05, serveDelay: 1.8, miss: 0.3, dig: 0.2 },
-    { reaction: 0.35, error: 1.2, jumpy: 0.6, smart: 0.4, serveDelay: 1.2, miss: 0.1, dig: 0.5 },
+    { reaction: 0.6, error: 1.9, jumpy: 0.3, smart: 0.05, serveDelay: 1.8, miss: 0.15, dig: 0.4 },
+    { reaction: 0.3, error: 1.0, jumpy: 0.6, smart: 0.4, serveDelay: 1.2, miss: 0.05, dig: 0.65 },
     { reaction: 0.08, error: 0.2, jumpy: 1, smart: 0.95, serveDelay: 0.8, miss: 0, dig: 0.9 },
   ];
 
@@ -80,7 +80,7 @@
         const hitY = me.y + 1.6;
         // decide once per shot whether the bot gives up on it; smashes are given up on much more often
         if (this.skip === null) {
-          const fast = Math.hypot(s.vx, s.vy) > 18;
+          const fast = game.rallyHits > 1 && Math.hypot(s.vx, s.vy) > 18;   // a serve is never a smash
           this.skip = Math.random() >= (fast ? cfg.dig : 1 - cfg.miss);
         }
         const pred = Sim.predict(s, Math.max(hitY, 1.4));
