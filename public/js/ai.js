@@ -5,10 +5,11 @@
   else root.AI = factory(root.Sim);
 }(typeof self !== 'undefined' ? self : this, function (Sim) {
   const LEVELS = [
-    // miss: chance to let an ordinary shot go; dig: chance to even try for a fast smash
-    { reaction: 0.6, error: 1.9, jumpy: 0.3, smart: 0.05, serveDelay: 1.8, miss: 0.15, dig: 0.4 },
-    { reaction: 0.3, error: 1.0, jumpy: 0.6, smart: 0.4, serveDelay: 1.2, miss: 0.05, dig: 0.65 },
-    { reaction: 0.08, error: 0.2, jumpy: 1, smart: 0.95, serveDelay: 0.8, miss: 0, dig: 0.9 },
+    // error: jitter (m) in where it aims, re-rolled as it re-thinks; bias: how far (m) it misjudges where a shot comes
+    // down, fixed for the whole shot so it cannot average out
+    { reaction: 0.5, error: 0.6, bias: 2.0, jumpy: 0.3, smart: 0.1, serveDelay: 1.8 },
+    { reaction: 0.22, error: 0.7, bias: 0, jumpy: 0.7, smart: 0.45, serveDelay: 1.2 },
+    { reaction: 0.06, error: 0.12, bias: 0, jumpy: 1, smart: 0.95, serveDelay: 0.8 },
   ];
 
   class Bot {
@@ -19,10 +20,10 @@
       this.think = 0;
       this.holdHit = 0;
       this.wantJump = false;
+      this.shotErr = null;
       this.down = false;
       this.smash = false;
       this.serveAt = 0;
-      this.skip = null;
       this.lastHit = false;
       this.lastFar = false; this.lastNear = false;
       this.serveH = 1;
@@ -78,15 +79,11 @@
       if (this.think <= 0 && incoming && canHit) {
         this.think = cfg.reaction;
         const hitY = me.y + 1.6;
-        // decide once per shot whether the bot gives up on it; smashes are given up on much more often
-        if (this.skip === null) {
-          const fast = game.rallyHits > 1 && Math.hypot(s.vx, s.vy) > 18;   // a serve is never a smash
-          this.skip = Math.random() >= (fast ? cfg.dig : 1 - cfg.miss);
-        }
         const pred = Sim.predict(s, Math.max(hitY, 1.4));
         if (pred) {
           // the bot hits on the way down, a little in front of itself
-          this.targetX = pred.x - me.face * 0.45 + (Math.random() - 0.5) * 2 * cfg.error;
+          if (this.shotErr === null) this.shotErr = (Math.random() - 0.5) * 2 * cfg.bias;
+          this.targetX = pred.x - me.face * 0.45 + this.shotErr + (Math.random() - 0.5) * 2 * cfg.error;
           this.landT = pred.t;
           this.high = s.y > 2.3 || pred.t < 0.5 && s.y > 2.0;
           this.wantJump = this.high && Math.random() < cfg.jumpy;
@@ -96,7 +93,7 @@
         this.down = Math.random() < cfg.smart ? foeDeep : Math.random() < 0.15;
         this.smash = Math.random() < 0.25 + 0.7 * cfg.smart;
       }
-      if (!incoming || !canHit) { this.skip = null; this.targetX = null; this.wantJump = false; this.down = false; this.smash = false; }
+      if (!incoming || !canHit) { this.shotErr = null; this.targetX = null; this.wantJump = false; this.down = false; this.smash = false; }
 
       const tx = this.targetX === null ? home : this.targetX;
       this.goTo(me, tx, input);
@@ -111,7 +108,7 @@
         input.drop = !input.smash && this.down;
         input.normal = !input.smash && !input.drop; // never a drive just because it is running forward
         const closing = dist < Sim.REACH * 1.15 + 0.35;
-        if (closing && me.swing < 0 && !this.skip) input.hit = true;
+        if (closing && me.swing < 0) input.hit = true;
       }
       return input;
     }
